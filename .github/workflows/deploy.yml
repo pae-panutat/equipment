@@ -16,6 +16,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install & build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble deploy folder
+        run: |
+          mkdir deploy
+          cp -r .next/standalone/. deploy/
+          mkdir -p deploy/.next
+          cp -r .next/static deploy/.next/static
+          cp -r public deploy/public
+          # node_modules is installed on the host (Node.js Selector -> Run NPM Install)
+          rm -rf deploy/node_modules
+
       - name: Upload via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -23,11 +44,10 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
-          # Remote folder, e.g. domains/equiplog.ddns.net/public_html/ (must end with /)
+          local-dir: deploy/
+          # Remote folder = Application root, e.g. apps/equiplog/ (must end with /)
           server-dir: ${{ secrets.FTP_DIR }}
           exclude: |
             **/.git*
             **/.git*/**
-            .github/**
             **/node_modules/**
-            README.md
