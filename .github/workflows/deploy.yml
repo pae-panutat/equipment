@@ -36,6 +36,9 @@ jobs:
           cp -r public deploy/public
           # node_modules is installed on the host (Node.js Selector -> Run NPM Install)
           rm -rf deploy/node_modules
+          # Passenger restarts the app when tmp/restart.txt changes
+          mkdir -p deploy/tmp
+          date -u +%s > deploy/tmp/restart.txt
 
       - name: Upload via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
