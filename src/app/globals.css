@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* Theme switch: the `dark` class on <html> (dark is the default, see layout.tsx). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens. Purple is the main accent; green/amber/red are reserved for status. */
+:root {
+  color-scheme: light;
+  --background: #f7f6fb;
+  --foreground: #1c1733;
+  --card: #ffffff;
+  --card-foreground: #1c1733;
+  --popover: #ffffff;
+  --popover-foreground: #1c1733;
+  --muted: #f0eef7;
+  --muted-foreground: #5f5978;
+  --border: #e4e0ef;
+  --primary: #6a3df0;
+  --primary-soft: #ece6ff;
+  --primary-foreground: #ffffff;
+  --ring: #8b6cf6;
+  --ok: #15803d;
+  --ok-soft: #dcfce7;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --bad: #b91c1c;
+  --bad-soft: #fee2e2;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b0a12;
+  --foreground: #f3f1ff;
+  --card: #141220;
+  --card-foreground: #f3f1ff;
+  --popover: #1b1830;
+  --popover-foreground: #f3f1ff;
+  --muted: #1d1a2e;
+  --muted-foreground: #a8a2c0;
+  --border: #2a2644;
+  --primary: #8e72ff;
+  --primary-soft: #2a2158;
+  --primary-foreground: #ffffff;
+  --ring: #8e72ff;
+  --ok: #4ade80;
+  --ok-soft: #12301f;
+  --warn: #fbbf24;
+  --warn-soft: #382a0a;
+  --bad: #f87171;
+  --bad-soft: #3b1414;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-line-seed), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 26px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* keep numbers aligned in tables and tiles */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -3,14 +3,42 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "npm run build:server && concurrently -k -n web,api,tsc \"next dev --webpack\" \"node --watch dist/server/index.js\" \"tsc -p server/tsconfig.json --watch --preserveWatchOutput\"",
+    "build": "next build && npm run build:server",
+    "build:server": "tsc -p server/tsconfig.json",
+    "start": "node server.js",
+    "typecheck": "tsc --noEmit && tsc -p server/tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "npm run build:server && node dist/server/migrate-cli.js",
+    "db:seed": "npm run build:server && node dist/server/seed.js",
+    "db:seed:reset": "npm run build:server && node dist/server/seed.js --reset"
+  },
+  "engines": {
+    "node": ">=20.9"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
+    "dotenv": "^18.0.10",
+    "drizzle-orm": "^0.45.4",
+    "express": "^5.3.0",
+    "lucide-react": "^1.70.0",
     "mysql2": "^3.24.6",
     "next": "16.4.5",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "concurrently": "^10.0.7",
+    "drizzle-kit": "^0.31.11",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2"
   }
 }

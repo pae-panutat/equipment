@@ -19,23 +19,25 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install & build
         run: |
           npm ci
+          npm run typecheck
           npm run build
 
       - name: Assemble deploy folder
         run: |
-          mkdir deploy
-          cp -r .next/standalone/. deploy/
-          mkdir -p deploy/.next
-          cp -r .next/static deploy/.next/static
-          cp -r public deploy/public
+          mkdir -p deploy/db
+          cp -r .next deploy/.next
+          rm -rf deploy/.next/cache deploy/.next/dev deploy/.next/types deploy/.next/trace
+          cp -r dist deploy/dist
+          if [ -d public ]; then cp -r public deploy/public; fi
+          cp -r db/migrations deploy/db/migrations
+          cp server.js package.json package-lock.json next.config.mjs deploy/
           # node_modules is installed on the host (Node.js Selector -> Run NPM Install)
-          rm -rf deploy/node_modules
 
       - name: Upload via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -52,7 +54,10 @@ jobs:
             **/.git*/**
             **/node_modules/**
 
+      # Add "[skip restart]" to a commit message when package.json dependencies changed:
+      # run "Run NPM Install" in DirectAdmin first, then restart manually.
       - name: Restart app
+        if: ${{ !contains(github.event.head_commit.message, '[skip restart]') }}
         env:
           RESTART_TOKEN: ${{ secrets.RESTART_TOKEN }}
           SITE_URL: ${{ secrets.SITE_URL }}
@@ -60,6 +65,6 @@ jobs:
           if [ -z "$RESTART_TOKEN" ] || [ -z "$SITE_URL" ]; then
             echo "RESTART_TOKEN/SITE_URL not set - restart the app manually in DirectAdmin"; exit 0
           fi
-          curl -sS -m 30 -X POST -H "x-restart-token: $RESTART_TOKEN" "$SITE_URL/api/restart" || true
-          sleep 5
-          curl -sS -m 60 "$SITE_URL/api/health" || true
+          curl -sS -m 30 -X POST -H "x-restart-token: $RESTART_TOKEN" "$SITE_URL/api/v1/internal/restart" || true
+          sleep 8
+          curl -sS -m 60 "$SITE_URL/api/v1/health" || true

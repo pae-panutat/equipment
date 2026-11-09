@@ -1,0 +1,144 @@
+import {
+  date,
+  datetime,
+  decimal,
+  index,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/mysql-core";
+import { ASSET_STATUSES, INTERVAL_UNITS, PRIORITIES, WORK_ORDER_KINDS, WORK_ORDER_STATUSES } from "../shared";
+
+// Key/value table for app-level metadata
+export const appMeta = mysqlTable("app_meta", {
+  key: varchar("meta_key", { length: 64 }).primaryKey(),
+  value: varchar("meta_value", { length: 255 }).notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+});
+
+// Owner organisation tree: university > faculty/office > department
+export const organizationUnits = mysqlTable(
+  "organization_units",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    parentId: int("parent_id"),
+    code: varchar("code", { length: 32 }).notNull(),
+    name: varchar("name", { length: 191 }).notNull(),
+    archivedAt: datetime("archived_at", { mode: "date" }), // datetime, not timestamp: nullable timestamps behave differently on MariaDB 10.4 vs 10.11
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("uq_org_code").on(t.code), index("ix_org_parent").on(t.parentId)],
+);
+
+// Physical place tree: campus > building > floor > room (separate from the owner unit)
+export const locations = mysqlTable(
+  "locations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    parentId: int("parent_id"),
+    kind: varchar("kind", { length: 16 }).notNull(), // campus | building | floor | room
+    code: varchar("code", { length: 32 }).notNull(),
+    name: varchar("name", { length: 191 }).notNull(),
+    archivedAt: datetime("archived_at", { mode: "date" }), // datetime, not timestamp: nullable timestamps behave differently on MariaDB 10.4 vs 10.11
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("uq_loc_code").on(t.code), index("ix_loc_parent").on(t.parentId)],
+);
+
+export const assetTypes = mysqlTable(
+  "asset_types",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    code: varchar("code", { length: 32 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    archivedAt: datetime("archived_at", { mode: "date" }), // datetime, not timestamp: nullable timestamps behave differently on MariaDB 10.4 vs 10.11
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("uq_asset_type_code").on(t.code)],
+);
+
+// One row = one physical piece of equipment
+export const assets = mysqlTable(
+  "assets",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    code: varchar("code", { length: 40 }).notNull(), // system-wide unique asset code
+    legacyAssetNo: varchar("legacy_asset_no", { length: 60 }), // old inventory number, optional
+    name: varchar("name", { length: 191 }).notNull(),
+    typeId: int("type_id").notNull(),
+    brand: varchar("brand", { length: 120 }),
+    model: varchar("model", { length: 120 }),
+    serialNumber: varchar("serial_number", { length: 120 }), // not unique: makers may reuse or omit it
+    ownerUnitId: int("owner_unit_id").notNull(),
+    locationId: int("location_id"),
+    locationDetail: varchar("location_detail", { length: 255 }),
+    status: mysqlEnum("status", ASSET_STATUSES).notNull().default("active"),
+    purchaseDate: date("purchase_date", { mode: "string" }),
+    installDate: date("install_date", { mode: "string" }),
+    price: decimal("price", { precision: 12, scale: 2 }),
+    vendor: varchar("vendor", { length: 191 }),
+    warrantyEnd: date("warranty_end", { mode: "string" }),
+    // type-specific values (validated by the API against the type's field definitions)
+    attributes: text("attributes"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_asset_code").on(t.code),
+    index("ix_asset_owner_type_status").on(t.ownerUnitId, t.typeId, t.status),
+    index("ix_asset_type").on(t.typeId),
+    index("ix_asset_location").on(t.locationId),
+  ],
+);
+
+// Recurring maintenance plan of one asset (an asset can have several)
+export const maintenancePlans = mysqlTable(
+  "maintenance_plans",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    assetId: int("asset_id").notNull(),
+    title: varchar("title", { length: 191 }).notNull(),
+    intervalValue: int("interval_value").notNull(),
+    intervalUnit: mysqlEnum("interval_unit", INTERVAL_UNITS).notNull(),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    nextDueDate: date("next_due_date", { mode: "string" }),
+    active: int("active").notNull().default(1),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("ix_plan_asset").on(t.assetId), index("ix_plan_due").on(t.active, t.nextDueDate)],
+);
+
+// A job to do (planned / repair / inspection). Result and cost live on the same row in this first slice.
+export const workOrders = mysqlTable(
+  "work_orders",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    number: varchar("number", { length: 32 }).notNull(),
+    assetId: int("asset_id").notNull(),
+    planId: int("plan_id"),
+    kind: mysqlEnum("kind", WORK_ORDER_KINDS).notNull(),
+    status: mysqlEnum("status", WORK_ORDER_STATUSES).notNull().default("open"),
+    priority: mysqlEnum("priority", PRIORITIES).notNull().default("normal"),
+    title: varchar("title", { length: 191 }).notNull(),
+    description: text("description"),
+    dueDate: date("due_date", { mode: "string" }),
+    performedOn: date("performed_on", { mode: "string" }), // actual work date (may be back-dated)
+    completedAt: datetime("completed_at", { mode: "date" }), // UTC
+    // NULL = unknown, which is different from 0 = no cost
+    laborCost: decimal("labor_cost", { precision: 12, scale: 2 }),
+    partsCost: decimal("parts_cost", { precision: 12, scale: 2 }),
+    otherCost: decimal("other_cost", { precision: 12, scale: 2 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_wo_number").on(t.number),
+    index("ix_wo_asset").on(t.assetId, t.performedOn),
+    index("ix_wo_status_due").on(t.status, t.dueDate),
+    index("ix_wo_completed").on(t.completedAt),
+  ],
+);
