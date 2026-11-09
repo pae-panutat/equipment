@@ -21,7 +21,7 @@ export default function Home() {
             <code className={styles.code}>page.js</code> file.
           </h1>
           <p>
-            แก้ไข จากเป้ Auto-deploy test 14:47:43 round2 - Looking for a starting point or more instructions? Head over to{" "}
+            Test Update Auto-deploy test 14:47:43 round2 - Looking for a starting point or more instructions? Head over to{" "}
             <a
               href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
               target="_blank"
