@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { GraduationCap, Wrench } from "lucide-react";
 import { safeNextPath, type AuthConfig } from "@shared/index";
@@ -27,6 +27,23 @@ export function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
+  // Keep the box ticked once the person has ticked it (per browser). Read after mount so server and browser render the same HTML.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("remember-me") === "1") setRemember(true);
+    } catch {
+      /* storage can be unavailable (private mode): the box simply starts unticked */
+    }
+  }, []);
+  const changeRemember = (on: boolean) => {
+    setRemember(on);
+    try {
+      if (on) localStorage.setItem("remember-me", "1");
+      else localStorage.removeItem("remember-me");
+    } catch {
+      /* ignore */
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(ERRORS[sp.get("error") ?? ""] ?? null);
 
@@ -98,7 +115,7 @@ export function LoginForm() {
               <input className={input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
             </label>
             <label className="flex min-h-11 items-center gap-3 text-[15px]">
-              <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={remember} onChange={(e) => changeRemember(e.target.checked)} />
               Remember me
             </label>
             <button

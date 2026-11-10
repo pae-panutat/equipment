@@ -185,7 +185,7 @@ export function UsersView() {
             <p className="text-[15px]">
               ต้องการลบผู้ใช้ <b>{deleting.displayName}</b> ({deleting.username ?? deleting.cmuEmail}) ถาวรหรือไม่? การลบ<b>กู้คืนไม่ได้</b>
             </p>
-            <p className="text-sm text-muted-foreground">ลบเฉพาะสิทธิ์เข้าใช้งาน งานซ่อมบำรุง รูป และข้อมูลที่ผู้ใช้เคยบันทึกจะยังอยู่ครบ (ยังเห็นว่าใครเป็นผู้บันทึก)</p>
+            <p className="text-sm text-muted-foreground">ลบบัญชีนี้ออกจากระบบ ส่วนงานซ่อมบำรุง รูป และข้อมูลที่ผู้ใช้เคยบันทึกจะไม่ถูกลบ (แค่ไม่แสดงชื่อผู้บันทึก)</p>
             <div className="flex justify-end gap-3 border-t border-border pt-3">
               <button type="button" data-autofocus onClick={() => setDeleting(null)} className="min-h-11 rounded-xl border border-border px-4 font-bold hover:bg-muted">
                 ยกเลิก

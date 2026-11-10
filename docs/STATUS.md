@@ -18,7 +18,8 @@
 - Migration 0009: index ใหม่ `ix_asset_status`, `ix_asset_name`, `ix_plan_asset_due`, `ix_wo_asset_status`, `ix_wo_status_performed`; ลบ index ที่ไม่ได้ใช้ `ix_plan_asset`, `ix_wo_asset`, `ix_wo_status_due`, `ix_wo_completed`; แก้ query รหัสอุปกรณ์ถัดไปให้ใช้ index
 - Security headers (CSP, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, COOP, HSTS เฉพาะ production), ปิด x-powered-by, เช็ก Sec-Fetch-Site กัน cross-site POST
 - แถบโหลดด้านบน + ข้อความ "ใช้เวลานานกว่าปกติ" เมื่อคำขอค้างเกิน 4 วินาที, หน้า loading ของ Next
-- เมนูซ้ายแบ่งกลุ่ม (กลุ่ม "ผู้ดูแลระบบ": ข้อมูลหลัก, ผู้ใช้งาน); ปุ่มลบผู้ใช้ (Super Admin, มี popup ยืนยัน): ลบเฉพาะสิทธิ์เข้าใช้งาน (migration 0010 เพิ่ม `users.deleted_at`; แถวผู้ใช้ยังอยู่ งาน/รูปที่เคยบันทึกไม่ถูกลบและยังเห็นชื่อผู้บันทึก; ชื่อผู้ใช้/อีเมล CMU ว่างให้ใช้ซ้ำได้); ลบตัวเอง/ผู้ดูแลคนสุดท้ายไม่ได้
+- เมนูซ้ายแบ่งกลุ่ม (กลุ่ม "ผู้ดูแลระบบ": ข้อมูลหลัก, ผู้ใช้งาน); ปุ่มลบผู้ใช้ (Super Admin, มี popup ยืนยัน): ลบแถวผู้ใช้ออกจาก DB จริง; งาน/รูปที่เคยบันทึกไม่ถูกลบ (แค่ไม่แสดงชื่อผู้บันทึก); ลบตัวเอง/ผู้ดูแลคนสุดท้ายไม่ได้ (migration 0010 เพิ่ม `deleted_at` แล้ว 0011 ลบแถวที่เคยถูกทำเครื่องหมายลบและเอาคอลัมน์ออก)
+- ช่อง Remember me จำค่าที่เคยติ๊กไว้ (localStorage `remember-me`) ในเบราว์เซอร์นั้น
 - ข้อควรทำบนโฮสต์: GitHub Actions deploy ใช้ `protocol: ftp` (ไม่เข้ารหัส) ควรเปลี่ยนเป็น `ftps` ถ้าโฮสต์รองรับ
 
 ## 1.10 เพิ่มอุปกรณ์ จัดโฟลเดอร์รูปตามส่วนงาน (ยังไม่ push)

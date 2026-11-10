@@ -183,7 +183,6 @@ export const users = mysqlTable(
     unitId: int("unit_id"), // the unit (and its sub-units) this user may see; NULL = none (except super_admin)
     active: int("active").notNull().default(1),
     lastLoginAt: datetime("last_login_at", { mode: "date" }),
-    deletedAt: datetime("deleted_at", { mode: "date" }), // set when a Super Admin deletes the user: access is removed, the row stays so recorded jobs/photos keep their author
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [uniqueIndex("uq_user_username").on(t.username), uniqueIndex("uq_user_cmu_email").on(t.cmuEmail), index("ix_user_unit").on(t.unitId)],
