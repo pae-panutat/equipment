@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Wrench } from "lucide-react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { canEditAssets, type AssetListItem, type Paged } from "@shared/index";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
 import { AssetEditDialog } from "@/components/assets/asset-edit-dialog";
+import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
 import { QrCell } from "@/components/assets/qr-cell";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
@@ -24,6 +25,7 @@ export function AssetsView() {
   const { user } = useAuth();
   const canEdit = user ? canEditAssets(user.role) : false; // the server enforces this too
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [recordingId, setRecordingId] = useState<number | null>(null); // record maintenance work for this asset
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({
     ...EMPTY_FILTERS,
@@ -171,6 +173,17 @@ export function AssetsView() {
                         {canEdit && (
                           <button
                             type="button"
+                            onClick={() => setRecordingId(a.id)}
+                            aria-label={`บันทึกงานซ่อมบำรุง ${a.code}`}
+                            title="บันทึกงานซ่อมบำรุง"
+                            className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Wrench className="size-4" aria-hidden="true" />
+                          </button>
+                        )}
+                        {canEdit && (
+                          <button
+                            type="button"
                             onClick={() => setEditingId(a.id)}
                             aria-label={`แก้ไข ${a.code}`}
                             title="แก้ไข"
@@ -211,6 +224,19 @@ export function AssetsView() {
         </Card>
       )}
 
+      {recordingId !== null && (
+        <WorkOrderDialog
+          assetId={recordingId}
+          onClose={(saved) => {
+            setRecordingId(null);
+            if (saved) {
+              reload(); // the "last maintenance" column changes
+              setSavedNote("บันทึกงานซ่อมบำรุงเรียบร้อยแล้ว");
+              setTimeout(() => setSavedNote(null), 5000);
+            }
+          }}
+        />
+      )}
       {editingId !== null && (
         <AssetEditDialog
           assetId={editingId}

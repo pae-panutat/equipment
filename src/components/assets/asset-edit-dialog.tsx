@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { ASSET_STATUSES, ASSET_STATUS_LABEL, type AssetDetail, type AssetStatus, type FilterOptions, type LocationOption } from "@shared/index";
+import { ASSET_STATUSES, ASSET_STATUS_LABEL, assetStatusProblem, type AssetDetail, type AssetStatus, type FilterOptions, type LocationOption } from "@shared/index";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/card";
 import { ApiError, apiSend } from "@/lib/api";
@@ -265,13 +265,24 @@ function EditForm({
                 ))}
               </select>
             ) : f.kind === "status" ? (
-              <select className={input} value={values.status} onChange={(e) => set("status", e.target.value)}>
-                {ASSET_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {ASSET_STATUS_LABEL[s]}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select className={input} value={values.status} onChange={(e) => set("status", e.target.value)}>
+                  {ASSET_STATUSES.map((s) => {
+                    const problem = s === asset.status ? null : assetStatusProblem(s, asset.inProgressJobs);
+                    return (
+                      <option key={s} value={s} disabled={problem !== null} title={problem ?? undefined}>
+                        {ASSET_STATUS_LABEL[s]}
+                        {problem ? " (เลือกไม่ได้ตอนนี้)" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span className="text-xs">
+                  {asset.inProgressJobs > 0
+                    ? `มีงานกำลังดำเนินการ ${asset.inProgressJobs} รายการ จึงเป็น "กำลังดำเนินการ" — บันทึกผลงานให้เสร็จแล้วสถานะจะเปลี่ยนเอง`
+                    : "สถานะ \"กำลังดำเนินการ\" ระบบตั้งให้เองเมื่อมีงานที่กำลังดำเนินการ (ตั้งเองไม่ได้)"}
+                </span>
+              </>
             ) : f.kind === "unit" ? (
               <select className={input} value={values.ownerUnitId} onChange={(e) => set("ownerUnitId", e.target.value)}>
                 {unitOpts.map((u) => (

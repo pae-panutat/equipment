@@ -145,10 +145,10 @@ async function main() {
         });
       }
     }
-    if (a.status === "faulty" || a.status === "under_repair") {
+    if (a.status === "under_repair") {
       const opened = addDays(today, -Math.floor(2 + rnd() * 20));
       await db.insert(workOrders).values({
-        number: woNumber(), assetId: a.id, kind: "repair", status: a.status === "under_repair" ? "in_progress" : "open", priority: pick(["normal", "high", "urgent"] as const),
+        number: woNumber(), assetId: a.id, kind: "repair", status: "in_progress", priority: pick(["normal", "high", "urgent"] as const),
         title: pick(["ไม่เย็น", "น้ำหยด", "มีเสียงดังผิดปกติ", "คอมเพรสเซอร์ไม่ทำงาน"]), dueDate: addDays(opened, 7),
       });
     }

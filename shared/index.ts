@@ -4,9 +4,9 @@ export const API_PREFIX = "/api/v1";
 export const ASSET_STATUSES = ["active", "faulty", "under_repair", "inactive", "disposed"] as const;
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
 export const ASSET_STATUS_LABEL: Record<AssetStatus, string> = {
-  active: "ใช้งานปกติ",
+  active: "ปกติ",
   faulty: "ชำรุด",
-  under_repair: "อยู่ระหว่างซ่อม",
+  under_repair: "กำลังดำเนินการ",
   inactive: "หยุดใช้งาน",
   disposed: "จำหน่ายออก",
 };
@@ -19,18 +19,17 @@ export const WORK_ORDER_KIND_LABEL: Record<WorkOrderKind, string> = {
   inspection: "ตรวจสอบ",
 };
 
-export const WORK_ORDER_STATUSES = ["open", "assigned", "in_progress", "done", "cancelled"] as const;
+// A job is either being worked on or finished.
+export const WORK_ORDER_STATUSES = ["in_progress", "done"] as const;
 export type WorkOrderStatus = (typeof WORK_ORDER_STATUSES)[number];
 export const WORK_ORDER_STATUS_LABEL: Record<WorkOrderStatus, string> = {
-  open: "เปิดงาน",
-  assigned: "มอบหมาย",
   in_progress: "กำลังดำเนินการ",
   done: "เสร็จสิ้น",
-  cancelled: "ยกเลิก",
 };
 
 export const PRIORITIES = ["low", "normal", "high", "urgent"] as const;
 export type Priority = (typeof PRIORITIES)[number];
+export const PRIORITY_LABEL: Record<Priority, string> = { low: "ต่ำ", normal: "ปกติ", high: "สูง", urgent: "เร่งด่วน" };
 
 export const INTERVAL_UNITS = ["day", "month"] as const;
 export type IntervalUnit = (typeof INTERVAL_UNITS)[number];
@@ -50,8 +49,8 @@ export type DashboardSummary = {
   /** Repair/maintenance cost of completed work in the selected range. Unknown costs are counted separately. */
   cost: { total: number; ordersWithCost: number; ordersWithUnknownCost: number };
   completedByMonth: { month: string; count: number }[];
-  upcoming: { assetId: number; assetCode: string; assetName: string; title: string; dueDate: string; overdue: boolean }[];
-  recent: { id: number; number: string; assetCode: string; assetName: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }[];
+  upcoming: { planId: number; assetId: number; assetCode: string; assetName: string; title: string; dueDate: string; overdue: boolean }[];
+  recent: { id: number; number: string; assetId: number; assetCode: string; assetName: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }[];
 };
 
 export type AssetListItem = {
@@ -67,6 +66,62 @@ export type AssetListItem = {
   lastMaintenance: string | null;
   nextDue: string | null;
 };
+
+/** A maintenance / repair record of one asset, as shown in its history. Costs: null = unknown, 0 = no cost. */
+export type WorkOrderItem = {
+  id: number;
+  number: string;
+  title: string;
+  kind: WorkOrderKind;
+  status: WorkOrderStatus;
+  priority: Priority;
+  description: string | null;
+  planId: number | null;
+  dueDate: string | null;
+  performedOn: string | null;
+  laborCost: number | null;
+  partsCost: number | null;
+  otherCost: number | null;
+  recordedBy: string | null;
+  /** Content version for the edit dialog (see AssetDetail.version). */
+  version: string;
+};
+
+/**
+ * The asset's own status always agrees with its jobs. Judged from the jobs that exist AFTER a save, not from the change itself:
+ *  - any job in progress -> the asset is "in progress" (an asset that is normal or faulty is moved there);
+ *  - no job in progress and the asset is "in progress" -> back to "normal";
+ *  - inactive and disposed assets are never changed; every other status is left as it is.
+ * Returns the new status, or null for "no change". An explicit choice by the user must still pass assetStatusProblem().
+ */
+export function autoAssetStatus(a: { current: AssetStatus; inProgress: number }): AssetStatus | null {
+  if (a.current === "inactive" || a.current === "disposed") return null;
+  if (a.inProgress > 0) return a.current === "under_repair" ? null : "under_repair";
+  if (a.current === "under_repair") return "active";
+  return null;
+}
+
+/** Why a status chosen by hand would contradict the jobs (null = fine). inProgress = jobs in progress once the change is made. */
+export function assetStatusProblem(status: AssetStatus, inProgress: number): string | null {
+  if (status === "under_repair" && inProgress === 0) {
+    return "ตั้งเป็น \"กำลังดำเนินการ\" ไม่ได้ เพราะไม่มีงานที่กำลังดำเนินการ — บันทึกงานซ่อมแล้วระบบจะเปลี่ยนสถานะให้เอง";
+  }
+  if (inProgress > 0 && (status === "active" || status === "faulty")) {
+    return `มีงานที่กำลังดำเนินการอยู่ ${inProgress} รายการ สถานะต้องเป็น "กำลังดำเนินการ" — บันทึกผลงานให้เสร็จก่อน ระบบจะเปลี่ยนสถานะให้เอง`;
+  }
+  return null;
+}
+
+/** A finished record keeps its status; their details can still be corrected. */
+export const WORK_ORDER_TERMINAL: readonly WorkOrderStatus[] = ["done"];
+
+/** One photo of an asset; the picture itself is fetched from /assets/:id/images/:imageId. */
+export type AssetImage = { id: number; width: number; height: number };
+
+/** Photo limits (also enforced by the server). The browser shrinks photos before uploading. */
+export const MAX_IMAGES_PER_ASSET = 1;
+export const IMAGE_MAX_BYTES = 1024 * 1024; // 1 MB
+export const THUMB_MAX_BYTES = 400 * 1024;
 
 export type AssetDetail = {
   id: number;
@@ -90,8 +145,11 @@ export type AssetDetail = {
   installDate: string | null;
   warrantyEnd: string | null;
   notes: string | null;
+  images: AssetImage[];
+  /** Jobs of this asset that are in progress: what the asset's status must agree with. */
+  inProgressJobs: number;
   plans: { id: number; title: string; intervalValue: number; intervalUnit: IntervalUnit; nextDueDate: string | null; active: boolean }[];
-  workOrders: { id: number; number: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; priority: Priority; dueDate: string | null; performedOn: string | null }[];
+  workOrders: WorkOrderItem[];
 };
 
 export type Paged<T> = { items: T[]; page: number; pageSize: number; total: number };

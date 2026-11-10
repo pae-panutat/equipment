@@ -1,9 +1,9 @@
-import crypto from "node:crypto";
 import { Router, type Response } from "express";
 import { eq, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import {
   ASSET_EDIT_ROLES,
+  assetStatusProblem,
   ASSET_STATUSES,
   DUE_SOON_DAYS,
   type LocationOption,
@@ -24,9 +24,13 @@ import { requireRole } from "./auth/guard";
 import { db } from "./db";
 import { addDays, addMonths, bangkokToday } from "./dates";
 import { allowedUnitIds, assetScope, rangeQuery, rows, scopeQuery } from "./query";
+import { authorizedAsset, contentVersion } from "./asset-access";
 import { qrSvg, scanUrl } from "./qr";
+import { assetImagesRouter } from "./asset-images";
+import { WORK_ORDER_VERSION_KEYS, workOrdersRouter } from "./work-orders";
 
 export const dataRouter = Router();
+const workOrderVersion = (row: object) => contentVersion(row, WORK_ORDER_VERSION_KEYS);
 
 // Content version of an asset's editable fields. The edit dialog sends back the version it loaded; the save is refused
 // if the fields have changed since (someone else saved first). Based on content, not on a timestamp, so two saves
@@ -36,8 +40,7 @@ const VERSION_KEYS = [
   "location_detail", "notes", "purchase_date", "install_date", "warranty_end",
 ] as const;
 const VERSION_COLUMNS = sql.raw(VERSION_KEYS.map((k) => `a.${k}`).join(", "));
-const versionOf = (row: object) =>
-  crypto.createHash("sha1").update(JSON.stringify(VERSION_KEYS.map((k) => (row as Record<string, unknown>)[k] ?? null))).digest("hex");
+const versionOf = (row: object) => contentVersion(row, VERSION_KEYS);
 
 /** "campus › building › floor › room" for a location id. */
 async function locationPath(): Promise<(id: number | null) => string | null> {
@@ -112,13 +115,13 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
     WHERE w.status = 'done' AND w.performed_on BETWEEN ${from} AND ${to} AND ${where}
     GROUP BY month`);
-  const upcoming = await rows<{ asset_id: number; code: string; name: string; title: string; due: string }>(sql`
-    SELECT a.id AS asset_id, a.code, a.name, p.title, p.next_due_date AS due
+  const upcoming = await rows<{ plan_id: number; asset_id: number; code: string; name: string; title: string; due: string }>(sql`
+    SELECT p.id AS plan_id, a.id AS asset_id, a.code, a.name, p.title, p.next_due_date AS due
     FROM maintenance_plans p JOIN assets a ON a.id = p.asset_id
     WHERE p.active = 1 AND a.status <> 'disposed' AND p.next_due_date <= ${soonLimit} AND ${where}
     ORDER BY p.next_due_date ASC LIMIT 8`);
-  const recent = await rows<{ id: number; number: string; code: string; name: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }>(sql`
-    SELECT w.id, w.number, a.code, a.name, w.title, w.kind, w.status,
+  const recent = await rows<{ id: number; number: string; asset_id: number; code: string; name: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }>(sql`
+    SELECT w.id, w.number, a.id AS asset_id, a.code, a.name, w.title, w.kind, w.status,
            DATE_FORMAT(COALESCE(w.completed_at, w.created_at), '%Y-%m-%dT%H:%i:%sZ') AS at
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
     WHERE ${where} ORDER BY COALESCE(w.completed_at, w.created_at) DESC, w.id DESC LIMIT 8`);
@@ -139,8 +142,8 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     maintenance: { overdue: Number(maint?.overdue ?? 0), dueSoon: Number(maint?.due_soon ?? 0), noPlan: Number(maint?.no_plan ?? 0) },
     cost: { total: Number(cost?.total ?? 0), ordersWithCost: Number(cost?.with_cost ?? 0), ordersWithUnknownCost: Number(cost?.unknown ?? 0) },
     completedByMonth,
-    upcoming: upcoming.map((u) => ({ assetId: u.asset_id, assetCode: u.code, assetName: u.name, title: u.title, dueDate: u.due, overdue: u.due < today })),
-    recent: recent.map((r) => ({ id: r.id, number: r.number, assetCode: r.code, assetName: r.name, title: r.title, kind: r.kind, status: r.status, at: r.at })),
+    upcoming: upcoming.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, title: u.title, dueDate: u.due, overdue: u.due < today })),
+    recent: recent.map((r) => ({ id: r.id, number: r.number, assetId: r.asset_id, assetCode: r.code, assetName: r.name, title: r.title, kind: r.kind, status: r.status, at: r.at })),
   };
   res.json(body);
 });
@@ -189,23 +192,6 @@ dataRouter.get("/assets", async (req, res) => {
 
 // ---- one asset: detail page, QR image, and QR scan ----
 
-type AssetRow = { id: number; owner_unit_id: number };
-
-/** Finds one asset and checks the signed-in user may see it. 404 = no such asset, 403 = exists but outside the user's scope. */
-async function authorizedAsset(res: Response, user: AuthUser, where: SQL): Promise<AssetRow | null> {
-  const [asset] = await rows<AssetRow>(sql`SELECT a.id, a.owner_unit_id FROM assets a WHERE ${where} LIMIT 1`);
-  if (!asset) {
-    res.status(404).json({ error: { code: "not_found", message: "ไม่พบอุปกรณ์" } });
-    return null;
-  }
-  const allowed = await allowedUnitIds(user);
-  if (allowed && !allowed.includes(asset.owner_unit_id)) {
-    res.status(403).json({ error: { code: "forbidden", message: "อุปกรณ์นี้อยู่นอกส่วนงานของคุณ จึงไม่สามารถดูข้อมูลได้" } });
-    return null;
-  }
-  return asset;
-}
-
 const idParam = z.coerce.number().int().positive();
 
 dataRouter.get("/assets/:id", async (req, res) => {
@@ -228,10 +214,23 @@ dataRouter.get("/assets/:id", async (req, res) => {
     sql`SELECT id, title, interval_value, interval_unit, next_due_date, active FROM maintenance_plans WHERE asset_id = ${id.data} ORDER BY active DESC, next_due_date IS NULL, next_due_date`,
   );
   const orders = await rows<{
-    id: number; number: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; priority: Priority; due_date: string | null; performed_on: string | null;
+    id: number; number: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; priority: Priority; description: string | null;
+    plan_id: number | null; due_date: string | null; performed_on: string | null;
+    labor_cost: string | null; parts_cost: string | null; other_cost: string | null; recorded_by: string | null;
   }>(sql`
-    SELECT id, number, title, kind, status, priority, due_date, performed_on FROM work_orders
-    WHERE asset_id = ${id.data} ORDER BY COALESCE(performed_on, due_date, DATE(created_at)) DESC, id DESC LIMIT 10`);
+    SELECT w.id, w.number, w.title, w.kind, w.status, w.priority, w.description, w.plan_id, w.due_date, w.performed_on,
+           w.labor_cost, w.parts_cost, w.other_cost, u.display_name AS recorded_by
+    FROM work_orders w LEFT JOIN users u ON u.id = w.created_by
+    WHERE w.asset_id = ${id.data}
+      AND (w.status = 'in_progress'
+           OR w.id IN (SELECT t.id FROM (SELECT id FROM work_orders WHERE asset_id = ${id.data} ORDER BY COALESCE(performed_on, due_date, DATE(created_at)) DESC, id DESC LIMIT 10) t))
+    ORDER BY (w.status = 'in_progress') DESC, COALESCE(w.performed_on, w.due_date, DATE(w.created_at)) DESC, w.id DESC`);
+  const [counts] = await rows<{ in_progress: string | null }>(
+    sql`SELECT SUM(status = 'in_progress') AS in_progress FROM work_orders WHERE asset_id = ${id.data}`,
+  );
+  const images = await rows<{ id: number; width: number; height: number }>(
+    sql`SELECT id, width, height FROM asset_images WHERE asset_id = ${id.data} ORDER BY id`,
+  );
 
   const path = await locationPath();
   const body: AssetDetail = {
@@ -239,8 +238,13 @@ dataRouter.get("/assets/:id", async (req, res) => {
     serialNumber: a.serial_number, status: a.status, unit: a.unit, location: path(a.location_id), locationDetail: a.location_detail,
     purchaseDate: a.purchase_date, installDate: a.install_date, warrantyEnd: a.warranty_end, notes: a.notes,
     plans: plans.map((p) => ({ id: p.id, title: p.title, intervalValue: p.interval_value, intervalUnit: p.interval_unit, nextDueDate: p.next_due_date, active: p.active === 1 })),
+    images, inProgressJobs: Number(counts?.in_progress ?? 0),
     workOrders: orders.map((o) => ({
-      id: o.id, number: o.number, title: o.title, kind: o.kind, status: o.status, priority: o.priority, dueDate: o.due_date, performedOn: o.performed_on,
+      id: o.id, number: o.number, title: o.title, kind: o.kind, status: o.status, priority: o.priority, description: o.description,
+      planId: o.plan_id, dueDate: o.due_date, performedOn: o.performed_on,
+      laborCost: o.labor_cost === null ? null : Number(o.labor_cost), partsCost: o.parts_cost === null ? null : Number(o.parts_cost),
+      otherCost: o.other_cost === null ? null : Number(o.other_cost), recordedBy: o.recorded_by,
+      version: workOrderVersion(o),
     })),
   };
   res.json(body);
@@ -321,6 +325,13 @@ dataRouter.patch("/assets/:id", requireRole(...ASSET_EDIT_ROLES), async (req, re
   const asset = await authorizedAsset(res, user, sql`a.id = ${id.data}`);
   if (!asset) return;
 
+  // the status of the asset must agree with its jobs (it follows them automatically; see autoAssetStatus)
+  if (changes.status !== undefined) {
+    const [c] = await rows<{ n: string | null }>(sql`SELECT SUM(status = 'in_progress') AS n FROM work_orders WHERE asset_id = ${asset.id}`);
+    const problem = assetStatusProblem(changes.status, Number(c?.n ?? 0));
+    if (problem) return void res.status(400).json({ error: { code: "status_conflict", message: problem } });
+  }
+
   const exists = async (table: "asset_types" | "organization_units" | "locations", value: number) =>
     (await rows<{ id: number }>(sql`SELECT id FROM ${sql.raw(table)} WHERE id = ${value} AND archived_at IS NULL`)).length > 0;
   if (changes.typeId !== undefined && !(await exists("asset_types", changes.typeId))) {
@@ -354,3 +365,6 @@ dataRouter.patch("/assets/:id", requireRole(...ASSET_EDIT_ROLES), async (req, re
   }
   res.json({ ok: true });
 });
+
+dataRouter.use(workOrdersRouter);
+dataRouter.use(assetImagesRouter);

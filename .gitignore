@@ -46,3 +46,6 @@ next-env.d.ts
 
 # generated data exports (import by hand; never commit)
 /exports
+
+# uploaded photos (local dev storage; on the host UPLOAD_DIR points outside the app folder)
+/uploads

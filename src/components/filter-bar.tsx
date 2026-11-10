@@ -4,14 +4,14 @@ import { ASSET_STATUSES, ASSET_STATUS_LABEL, type AssetStatus, type FilterOption
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 
-export type Filters = { unitId: string; typeId: string; status: string; from: string; to: string };
-export const EMPTY_FILTERS: Filters = { unitId: "", typeId: "", status: "", from: "", to: "" };
+export type Filters = { unitId: string; typeId: string; status: string };
+export const EMPTY_FILTERS: Filters = { unitId: "", typeId: "", status: "" };
 
 const field = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, className, emphasis = false }: { label: string; children: React.ReactNode; className?: string; emphasis?: boolean }) {
   return (
-    <label className="grid min-w-0 gap-1 text-[13px] text-muted-foreground">
+    <label className={cn("grid min-w-0 gap-1 text-[13px]", emphasis ? "font-bold text-foreground" : "text-muted-foreground", className)}>
       {label}
       {children}
     </label>
@@ -34,12 +34,10 @@ function unitOptions(units: FilterOptions["units"]) {
 export function FilterBar({
   value,
   onChange,
-  withDates = false,
   className,
 }: {
   value: Filters;
   onChange: (v: Filters) => void;
-  withDates?: boolean;
   className?: string;
 }) {
   const { data } = useApi<FilterOptions>("/meta/filters");
@@ -47,9 +45,9 @@ export function FilterBar({
   const dirty = Object.values(value).some(Boolean);
 
   return (
-    <div className={cn("grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]", className)}>
-      <Field label="ส่วนงาน (รวมส่วนงานย่อย)">
-        <select className={field} value={value.unitId} onChange={(e) => set({ unitId: e.target.value })}>
+    <div className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(300px,2.4fr)_minmax(170px,1fr)_minmax(170px,1fr)_auto]", className)}>
+      <Field label="ส่วนงาน (รวมส่วนงานย่อย)" className="sm:col-span-2 xl:col-span-1" emphasis>
+        <select className={cn(field, "border-primary/50 font-bold")} value={value.unitId} onChange={(e) => set({ unitId: e.target.value })}>
           <option value="">ทุกส่วนงาน</option>
           {unitOptions(data?.units ?? []).map((u) => (
             <option key={u.id} value={u.id}>
@@ -78,17 +76,7 @@ export function FilterBar({
           ))}
         </select>
       </Field>
-      {withDates && (
-        <>
-          <Field label="ตั้งแต่วันที่">
-            <input type="date" className={field} value={value.from} max={value.to || undefined} onChange={(e) => set({ from: e.target.value })} />
-          </Field>
-          <Field label="ถึงวันที่">
-            <input type="date" className={field} value={value.to} min={value.from || undefined} onChange={(e) => set({ to: e.target.value })} />
-          </Field>
-        </>
-      )}
-      <div className="flex items-end">
+      <div className="flex items-end sm:col-span-2 xl:col-span-1">
         <button
           type="button"
           disabled={!dirty}

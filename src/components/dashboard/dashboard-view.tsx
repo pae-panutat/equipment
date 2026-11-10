@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronRight, TriangleAlert } from "lucide-react";
+import { canEditAssets } from "@shared/index";
 import {
   ASSET_STATUSES,
   ASSET_STATUS_LABEL,
@@ -15,6 +16,7 @@ import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar"
 import { STATUS_DOT } from "@/components/status-badge";
 import { Card, CardTitle, EmptyState, ErrorState, Skeleton, Stat } from "@/components/ui/card";
 import { formatBaht, formatDate, formatDateTime, formatMonth, formatNumber } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
 import { CountUp, SegmentBar } from "./charts";
 import { LineChart, Tooltip, Treemap, useTip, type TreeItem } from "./bento";
@@ -31,9 +33,9 @@ export function DashboardView() {
       </div>
 
       <Card className="p-4 sm:p-5">
-        <FilterBar value={filters} onChange={setFilters} withDates />
+        <FilterBar value={filters} onChange={setFilters} />
         <p className="mt-3 text-xs text-muted-foreground">
-          ช่วงวันที่ใช้กับ “งานเสร็จสิ้น” (ตามวันที่ทำจริง) และ “ค่าใช้จ่าย” เท่านั้น ส่วนจำนวนอุปกรณ์ สถานะ และงานใกล้ครบกำหนดเป็นข้อมูลปัจจุบัน
+          “งานเสร็จสิ้น” (ตามวันที่ทำจริง) และ “ค่าใช้จ่าย” นับย้อนหลัง 12 เดือน ส่วนจำนวนอุปกรณ์ สถานะ และงานใกล้ครบกำหนดเป็นข้อมูลปัจจุบัน
           {data && <> ณ วันที่ {formatDate(data.asOf)}</>}
         </p>
       </Card>
@@ -65,6 +67,8 @@ const PALETTE: { color: string; ink: "dark" | "light" }[] = [
 ];
 
 function Content({ data, filters }: { data: DashboardSummary; filters: Filters }) {
+  const { user } = useAuth();
+  const canRecord = user ? canEditAssets(user.role) : false; // only a Super Admin or Technician may record work (the server enforces it too)
   const tip = useTip();
   const acQuery = new URLSearchParams();
   if (filters.unitId) acQuery.set("unitId", filters.unitId);
@@ -190,6 +194,7 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
 
       <Card className="lg:col-span-12">
         <CardTitle>รายการใกล้ครบกำหนดและเกินกำหนด</CardTitle>
+        <p className="mt-1 text-sm text-muted-foreground">{canRecord ? "คลิกที่รายการเพื่อเปิดอุปกรณ์และบันทึกงานของแผนนั้นได้ทันที" : "คลิกที่รายการเพื่อเปิดดูอุปกรณ์"}</p>
         {data.upcoming.length === 0 ? (
           <div className="mt-4">
             <EmptyState title="ไม่มีงานใกล้ครบกำหนด" hint={`ไม่มีแผนที่ครบกำหนดภายใน ${DUE_SOON_DAYS} วัน`} />
@@ -202,22 +207,41 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
                   <th className="py-2 font-normal">อุปกรณ์</th>
                   <th className="py-2 font-normal">งาน</th>
                   <th className="py-2 text-right font-normal">กำหนด</th>
+                  <th className="w-8 py-2" aria-label="เปิด" />
                 </tr>
               </thead>
               <tbody>
-                {data.upcoming.map((u) => (
-                  <tr key={`${u.assetId}-${u.title}-${u.dueDate}`} className="border-t border-border">
-                    <td className="py-2.5 pr-3">
-                      <div className="font-bold">{u.assetCode}</div>
-                      <div className="text-muted-foreground">{u.assetName}</div>
-                    </td>
-                    <td className="py-2.5 pr-3">{u.title}</td>
-                    <td className="py-2.5 text-right">
-                      <span className="tabular block">{formatDate(u.dueDate)}</span>
-                      <span className={`text-xs font-bold ${u.overdue ? "text-bad" : "text-warn"}`}>{u.overdue ? "เกินกำหนด" : "ใกล้ครบกำหนด"}</span>
-                    </td>
-                  </tr>
-                ))}
+                {data.upcoming.map((u) => {
+                  // the whole row is a link (every cell links to the same place; only the first one is a tab stop)
+                  const href = canRecord ? `/assets/${u.assetId}?plan=${u.planId}` : `/assets/${u.assetId}`;
+                  const cell = "block py-2.5";
+                  return (
+                    <tr key={`${u.planId}-${u.dueDate}`} className="border-t border-border transition-colors hover:bg-muted/50">
+                      <td className="pr-3">
+                        <Link href={href} className={cell} aria-label={`${canRecord ? "บันทึกงาน" : "ดูอุปกรณ์"} ${u.assetCode} ${u.title} กำหนด ${formatDate(u.dueDate)}`}>
+                          <span className="block font-bold text-primary">{u.assetCode}</span>
+                          <span className="block text-muted-foreground">{u.assetName}</span>
+                        </Link>
+                      </td>
+                      <td className="pr-3">
+                        <Link href={href} tabIndex={-1} aria-hidden="true" className={cell}>
+                          {u.title}
+                        </Link>
+                      </td>
+                      <td className="text-right">
+                        <Link href={href} tabIndex={-1} aria-hidden="true" className={cell}>
+                          <span className="tabular block">{formatDate(u.dueDate)}</span>
+                          <span className={`text-xs font-bold ${u.overdue ? "text-bad" : "text-warn"}`}>{u.overdue ? "เกินกำหนด" : "ใกล้ครบกำหนด"}</span>
+                        </Link>
+                      </td>
+                      <td className="text-right">
+                        <Link href={href} tabIndex={-1} aria-hidden="true" className={cell}>
+                          <ChevronRight className="ml-auto size-4 text-muted-foreground" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -226,6 +250,7 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
 
       <Card className="lg:col-span-12">
         <CardTitle>กิจกรรมล่าสุด</CardTitle>
+        <p className="mt-1 text-sm text-muted-foreground">{canRecord ? "คลิกที่รายการเพื่อเปิดอุปกรณ์และบันทึกผล/แก้ไขใบงานนั้นได้ทันที" : "คลิกที่รายการเพื่อเปิดดูอุปกรณ์"}</p>
         {data.recent.length === 0 ? (
           <div className="mt-4">
             <EmptyState title="ยังไม่มีกิจกรรม" />
@@ -233,14 +258,23 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
         ) : (
           <ul className="mt-3 divide-y divide-border">
             {data.recent.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5 text-sm">
-                <span className="min-w-0">
-                  <b>{r.assetCode}</b> · {r.title}
-                  <span className="ml-2 text-muted-foreground">
-                    {WORK_ORDER_KIND_LABEL[r.kind]} · {WORK_ORDER_STATUS_LABEL[r.status]}
+              <li key={r.id}>
+                <Link
+                  href={canRecord ? `/assets/${r.assetId}?job=${r.id}` : `/assets/${r.assetId}`}
+                  className="-mx-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg px-2 py-2.5 text-sm transition-colors hover:bg-muted/50"
+                  aria-label={`${canRecord ? "เปิดใบงาน" : "ดูอุปกรณ์"} ${r.assetCode} ${r.title}`}
+                >
+                  <span className="min-w-0">
+                    <b className="text-primary">{r.assetCode}</b> · {r.title}
+                    <span className="ml-2 text-muted-foreground">
+                      {WORK_ORDER_KIND_LABEL[r.kind]} · {WORK_ORDER_STATUS_LABEL[r.status]}
+                    </span>
                   </span>
-                </span>
-                <span className="tabular text-muted-foreground">{formatDateTime(r.at)}</span>
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <span className="tabular">{formatDateTime(r.at)}</span>
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

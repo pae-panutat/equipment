@@ -12,7 +12,9 @@ export function createApp() {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", 1); // Apache/Passenger sits in front on the host (real client IP, https)
-  app.use(express.json({ limit: "1mb" }));
+  const smallJson = express.json({ limit: "1mb" });
+  const photoJson = express.json({ limit: "3mb" }); // base64 of one photo (max 1 MB) + thumbnail
+  app.use((req, res, next) => (req.method === "POST" && /^\/api\/v1\/assets\/\d+\/images\/?$/.test(req.path) ? photoJson(req, res, next) : smallJson(req, res, next)));
   app.use("/api/v1", (_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     next();
@@ -55,6 +57,12 @@ export function createApp() {
   app.use("/api/v1", api);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    // a client mistake (bad JSON, body too large) is a 4xx, not a server error
+    const status = (err as { status?: number })?.status;
+    if (typeof status === "number" && status >= 400 && status < 500) {
+      res.status(status).json({ error: { code: status === 413 ? "too_large" : "bad_request", message: status === 413 ? "ข้อมูลที่ส่งมาใหญ่เกินไป" : "คำขอไม่ถูกต้อง" } });
+      return;
+    }
     console.error(err);
     res.status(500).json({ error: { code: "internal_error", message: "Internal server error" } });
   });

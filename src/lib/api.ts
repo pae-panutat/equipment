@@ -26,7 +26,8 @@ async function toError(res: Response): Promise<ApiError> {
 export async function apiGet<T>(path: string, params?: Record<string, string | number | null | undefined>, signal?: AbortSignal): Promise<T> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params ?? {})) if (v !== null && v !== undefined && v !== "") qs.set(k, String(v));
-  const res = await fetch(`${API_PREFIX}${path}${qs.size ? `?${qs}` : ""}`, { signal, headers: { Accept: "application/json" } });
+  const query = qs.toString(); // (not qs.size: that is missing in browsers older than Chrome 113 / Safari 17)
+  const res = await fetch(`${API_PREFIX}${path}${query ? `?${query}` : ""}`, { signal, headers: { Accept: "application/json" } });
   if (!res.ok) {
     if (res.status === 401 && path !== "/auth/me" && typeof window !== "undefined") window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     throw await toError(res);
@@ -35,7 +36,7 @@ export async function apiGet<T>(path: string, params?: Record<string, string | n
 }
 
 /** POST/PATCH a JSON body. */
-export async function apiSend<T = { ok: true }>(method: "POST" | "PATCH", path: string, body?: unknown): Promise<T> {
+export async function apiSend<T = { ok: true }>(method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_PREFIX}${path}`, {
     method,
     headers: { Accept: "application/json", "Content-Type": "application/json" },

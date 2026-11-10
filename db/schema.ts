@@ -125,7 +125,7 @@ export const workOrders = mysqlTable(
     assetId: int("asset_id").notNull(),
     planId: int("plan_id"),
     kind: mysqlEnum("kind", WORK_ORDER_KINDS).notNull(),
-    status: mysqlEnum("status", WORK_ORDER_STATUSES).notNull().default("open"),
+    status: mysqlEnum("status", WORK_ORDER_STATUSES).notNull().default("in_progress"),
     priority: mysqlEnum("priority", PRIORITIES).notNull().default("normal"),
     title: varchar("title", { length: 191 }).notNull(),
     description: text("description"),
@@ -136,6 +136,7 @@ export const workOrders = mysqlTable(
     laborCost: decimal("labor_cost", { precision: 12, scale: 2 }),
     partsCost: decimal("parts_cost", { precision: 12, scale: 2 }),
     otherCost: decimal("other_cost", { precision: 12, scale: 2 }),
+    createdBy: int("created_by"), // the user who recorded it
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
@@ -144,6 +145,24 @@ export const workOrders = mysqlTable(
     index("ix_wo_status_due").on(t.status, t.dueDate),
     index("ix_wo_completed").on(t.completedAt),
   ],
+);
+
+// Photos of an asset. The files live on disk (see UPLOAD_DIR); this table keeps what is needed to find and show them.
+export const assetImages = mysqlTable(
+  "asset_images",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    assetId: int("asset_id").notNull(),
+    fileName: varchar("file_name", { length: 64 }).notNull(), // random name chosen by the server (never the uploaded name)
+    thumbName: varchar("thumb_name", { length: 64 }).notNull(),
+    contentType: varchar("content_type", { length: 32 }).notNull(),
+    sizeBytes: int("size_bytes").notNull(),
+    width: int("width").notNull(), // as reported by the browser; only a layout hint
+    height: int("height").notNull(),
+    createdBy: int("created_by"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("ix_asset_image_asset").on(t.assetId, t.id)],
 );
 
 // People who can sign in. A user has a local username/password, a CMU account (@cmu.ac.th), or both.

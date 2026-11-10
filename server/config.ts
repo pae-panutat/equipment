@@ -43,5 +43,13 @@ export const config = {
     // Fields of the account info that hold the person's faculty/office name; used to pick their unit on first sign-in
     orgFields: (process.env.CMU_OAUTH_ORG_FIELDS || "organization_name_TH,organization_name_EN").split(",").map((f) => f.trim()).filter(Boolean),
   },
+  // Where uploaded photos are stored (files on disk, not in the database).
+  // On the host this MUST be set to a folder OUTSIDE the app folder: the FTP deploy deletes every file in the app folder
+  // that is not part of the build, so photos kept there would disappear on the next deploy. Unset in production = uploads off.
+  uploadDir: process.env.UPLOAD_DIR
+    ? path.resolve(process.env.UPLOAD_DIR)
+    : process.env.NODE_ENV === "production"
+      ? ""
+      : path.resolve(__dirname, "..", "..", "uploads"),
   migrationsDir: path.resolve(__dirname, "..", "..", "db", "migrations"),
 };

@@ -107,3 +107,11 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Browsers without dynamic viewport units (iOS Safari < 15.4, Chrome < 108) ignore the dvh classes: use vh there instead. */
+@supports not (height: 100dvh) {
+  .h-dvh { height: 100vh; }
+  .min-h-dvh { min-height: 100vh; }
+  .max-h-\[92dvh\] { max-height: 92vh; }
+  .max-h-\[68dvh\] { max-height: 68vh; }
+}
