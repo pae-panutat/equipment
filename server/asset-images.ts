@@ -13,7 +13,8 @@ import { db } from "./db";
 import { rows } from "./query";
 
 // Photos of an asset. The browser shrinks each photo (and makes a small thumbnail) before sending it as base64 JSON, so the
-// server needs no image library. Files live under UPLOAD_DIR/assets/<assetId>/ with random names; the database row keeps the rest.
+// server needs no image library. Files live under UPLOAD_DIR/assets/<unit folder>/<assetId>/ (grouped by the unit that owns the asset)
+// with random names; the database row keeps the folder and the rest.
 // Viewing follows the same login + unit scope as the asset itself; only a Super Admin or Technician may add or delete photos.
 export const assetImagesRouter = Router();
 const idParam = z.coerce.number().int().positive();
@@ -39,7 +40,35 @@ const uploadBody = z.object({ image: z.string().min(1), thumb: z.string().min(1)
 
 class TooMany extends Error {}
 
-const dirOf = (assetId: number) => path.join(config.uploadDir, "assets", String(assetId));
+// The only folder shapes we ever read or write: assets/<unit folder>/<assetId> (or the first layout, assets/<assetId>).
+// A folder name is built from letters, digits, "_" and "-" only, so it can never contain ".." or a path separator.
+const SAFE_DIR = /^assets\/(?:[A-Za-z0-9_-]{1,40}\/)?\d{1,10}$/;
+
+/** The folder for an asset's photos, grouped by the unit (faculty / department) that owns the asset. */
+export function folderFor(unit: { id: number; code: string }, assetId: number): string {
+  const safe = unit.code.replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40);
+  return `assets/${/[A-Za-z0-9]/.test(safe) ? safe : `unit-${unit.id}`}/${assetId}`; // a code with no usable characters falls back to unit-<id>
+}
+
+/** Absolute path of a stored folder, or null if it does not have the expected shape. */
+const absDir = (dir: string) => (SAFE_DIR.test(dir) ? path.join(config.uploadDir, ...dir.split("/")) : null);
+
+/** Remove a photo folder that has become empty, and its unit folder if that is empty too (never anything that still has files). */
+async function tidy(dir: string) {
+  const abs = absDir(dir);
+  if (!abs) return;
+  try {
+    await fs.rmdir(abs);
+    if (dir.split("/").length === 3) await fs.rmdir(path.dirname(abs));
+  } catch {
+    /* not empty (or already gone): leave it */
+  }
+}
+
+async function unitOf(unitId: number) {
+  const [u] = await rows<{ id: number; code: string }>(sql`SELECT id, code FROM organization_units WHERE id = ${unitId}`);
+  return u ?? { id: unitId, code: "" };
+}
 
 assetImagesRouter.post("/assets/:id/images", requireRole(...ASSET_EDIT_ROLES), async (req, res) => {
   if (!config.uploadDir) return notConfigured(res);
@@ -61,7 +90,8 @@ assetImagesRouter.post("/assets/:id/images", requireRole(...ASSET_EDIT_ROLES), a
   const base = crypto.randomBytes(16).toString("hex");
   const fileName = `${base}.${imageType.ext}`;
   const thumbName = `${base}_t.${thumbType.ext}`;
-  const dir = dirOf(asset.id);
+  const folder = folderFor(await unitOf(asset.owner_unit_id), asset.id);
+  const dir = absDir(folder)!; // built by folderFor, so it always has the expected shape
   const removeNew = () => Promise.all([fs.rm(path.join(dir, fileName), { force: true }), fs.rm(path.join(dir, thumbName), { force: true })]);
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, fileName), image, { flag: "wx" });
@@ -75,7 +105,7 @@ assetImagesRouter.post("/assets/:id/images", requireRole(...ASSET_EDIT_ROLES), a
       const [row] = await tx
         .insert(assetImages)
         .values({
-          assetId: asset.id, fileName, thumbName, contentType: imageType.type, sizeBytes: image.length,
+          assetId: asset.id, dir: folder, fileName, thumbName, contentType: imageType.type, sizeBytes: image.length,
           width: parsed.data.width, height: parsed.data.height, createdBy: req.user!.id,
         })
         .$returningId();
@@ -83,10 +113,15 @@ assetImagesRouter.post("/assets/:id/images", requireRole(...ASSET_EDIT_ROLES), a
       return { id: row.id, replaced: existing };
     });
     // the old photo's files go only after the new one is safely stored
-    for (const old of saved.replaced) for (const name of [old.fileName, old.thumbName]) if (NAME.test(name)) await fs.rm(path.join(dir, name), { force: true });
+    for (const old of saved.replaced) {
+      const oldDir = absDir(old.dir);
+      if (oldDir) for (const name of [old.fileName, old.thumbName]) if (NAME.test(name)) await fs.rm(path.join(oldDir, name), { force: true });
+      if (old.dir !== folder) await tidy(old.dir);
+    }
     res.status(201).json({ id: saved.id });
   } catch (err) {
     await removeNew(); // never leave orphan files behind
+    await tidy(folder);
     if (err instanceof TooMany) return fail(res, 400, "too_many", `อุปกรณ์หนึ่งชิ้นมีรูปได้ ${MAX_IMAGES_PER_ASSET} รูป — กด "เปลี่ยนรูป" หรือลบรูปเดิมก่อน`);
     throw err;
   }
@@ -109,7 +144,9 @@ assetImagesRouter.get("/assets/:id/images/:imageId", async (req, res) => {
   if (!NAME.test(name)) return fail(res, 404, "not_found", "ไม่พบรูปภาพ");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "private, no-cache"); // the browser may keep it but must ask first, so the login and unit check run on every view (a 304 when unchanged)
-  res.sendFile(path.join(dirOf(asset.id), name), (err) => {
+  const dir = absDir(row.dir);
+  if (!dir) return fail(res, 404, "not_found", "ไม่พบรูปภาพ");
+  res.sendFile(path.join(dir, name), (err) => {
     if (err && !res.headersSent) fail(res, 404, "not_found", "ไม่พบไฟล์รูปภาพ");
   });
 });
@@ -123,8 +160,42 @@ assetImagesRouter.delete("/assets/:id/images/:imageId", requireRole(...ASSET_EDI
   const row = await findImage(asset.id, imageId.data);
   if (!row) return fail(res, 404, "not_found", "ไม่พบรูปภาพ");
   await db.delete(assetImages).where(eq(assetImages.id, row.id));
-  if (config.uploadDir) {
-    for (const name of [row.fileName, row.thumbName]) if (NAME.test(name)) await fs.rm(path.join(dirOf(asset.id), name), { force: true });
+  const dir = config.uploadDir ? absDir(row.dir) : null;
+  if (dir) {
+    for (const name of [row.fileName, row.thumbName]) if (NAME.test(name)) await fs.rm(path.join(dir, name), { force: true });
+    await tidy(row.dir);
   }
   res.json({ ok: true });
 });
+
+/**
+ * After an asset moves to another unit, move its photo files into that unit's folder and update the stored folder.
+ * Best effort: a row is changed only after its files have moved, and a half-done move is undone, so a photo is never lost;
+ * if anything fails the photo simply stays where it was (the stored folder keeps working).
+ */
+export async function relocateAssetImages(assetId: number): Promise<void> {
+  if (!config.uploadDir) return;
+  const [a] = await rows<{ unit_id: number; code: string }>(sql`SELECT u.id AS unit_id, u.code FROM assets a JOIN organization_units u ON u.id = a.owner_unit_id WHERE a.id = ${assetId}`);
+  if (!a) return;
+  const target = folderFor({ id: a.unit_id, code: a.code }, assetId);
+  const to = absDir(target)!;
+  for (const img of await db.select().from(assetImages).where(eq(assetImages.assetId, assetId))) {
+    const from = absDir(img.dir);
+    if (img.dir === target || !from) continue;
+    const moved: string[] = [];
+    try {
+      await fs.mkdir(to, { recursive: true });
+      for (const name of [img.fileName, img.thumbName]) {
+        if (!NAME.test(name)) throw new Error("unexpected file name");
+        await fs.rename(path.join(from, name), path.join(to, name));
+        moved.push(name);
+      }
+      await db.update(assetImages).set({ dir: target }).where(eq(assetImages.id, img.id));
+      await tidy(img.dir);
+    } catch (err) {
+      console.error(`Could not move the photo of asset ${assetId} to ${target}; it stays in ${img.dir}`, err);
+      for (const name of moved) await fs.rename(path.join(to, name), path.join(from, name)).catch(() => undefined); // undo a half-done move
+      await tidy(target); // and do not leave the empty destination folder behind
+    }
+  }
+}

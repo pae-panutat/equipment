@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { ASSET_STATUSES, ASSET_STATUS_LABEL, assetStatusProblem, type AssetDetail, type AssetStatus, type FilterOptions, type LocationOption } from "@shared/index";
 import { Modal } from "@/components/ui/modal";
+import { unitOptions } from "@/lib/unit-options";
 import { Skeleton } from "@/components/ui/card";
 import { ApiError, apiSend } from "@/lib/api";
 import { formatDate } from "@/lib/format";
@@ -71,18 +72,6 @@ function toApi(key: Key, raw: string): string | number | null {
     default:
       return v === "" ? null : v;
   }
-}
-
-function unitOptions(units: FilterOptions["units"]) {
-  const out: { id: number; label: string }[] = [];
-  const walk = (parent: number | null, depth: number) => {
-    for (const u of units.filter((x) => x.parentId === parent)) {
-      out.push({ id: u.id, label: `${"— ".repeat(depth)}${u.name}` });
-      walk(u.id, depth + 1);
-    }
-  };
-  walk(null, 0);
-  return out;
 }
 
 export function AssetEditDialog({ assetId, onClose }: { assetId: number; onClose: (changedCode: string | null) => void }) {

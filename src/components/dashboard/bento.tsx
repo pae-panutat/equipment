@@ -1,9 +1,8 @@
 "use client";
 
 // Bento-style charts for the asset dashboard.
-// Visual language (smooth gradient line, squarified treemap, floating tooltip) adapted from
-// components/ui/analytics-bento.tsx (the reference component supplied with the project brief). Differences: Thai labels, one font
-// (LINE Seed), no fixed "up/green" deltas, and safe handling of empty / single / all-zero data.
+// Smooth gradient line, squarified treemap and floating tooltip. Thai labels, one font (LINE Seed), no fixed "up/green" deltas,
+// and safe handling of empty / single / all-zero data.
 
 import * as React from "react";
 import { formatNumber } from "@/lib/format";

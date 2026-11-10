@@ -3,42 +3,55 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Boxes, LayoutDashboard, LogOut, Menu, Wrench, X } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, LogOut, Menu, Wrench, X } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar, UserIcon } from "@/components/ui/user-icon";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" }> };
+
+// The menu is split into groups separated by a divider; a group may have a small heading (shown when the sidebar is open).
+const MAIN: NavItem[] = [
   { href: "/", label: "ภาพรวม", icon: LayoutDashboard },
   { href: "/assets", label: "ทะเบียนอุปกรณ์", icon: Boxes },
-] as const;
+];
+const ADMIN: NavItem[] = [
+  { href: "/master", label: "ข้อมูลหลัก", icon: Database },
+  { href: "/users", label: "ผู้ใช้งาน", icon: UserIcon },
+];
 
 /** compact = the folded sidebar: icons only (the name is still the tooltip and the screen-reader label). */
 function NavLinks({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const items = user?.role === "super_admin" ? [...NAV, { href: "/users", label: "ผู้ใช้งาน", icon: UserIcon }] : NAV;
+  const groups: { heading?: string; items: NavItem[] }[] = [{ items: MAIN }];
+  if (user?.role === "super_admin") groups.push({ heading: "ผู้ดูแลระบบ", items: ADMIN });
   const row = cn("flex min-h-11 items-center gap-3 rounded-2xl text-[15px] transition-colors", compact ? "justify-center px-0" : "px-3.5");
   return (
-    <nav aria-label="เมนูหลัก" className="flex flex-col gap-1">
-      {items.map(({ href, label, icon: Icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            title={compact ? label : undefined}
-            aria-current={active ? "page" : undefined}
-            className={cn(row, active ? "bg-primary-soft font-bold text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
-          >
-            <Icon className="size-[18px] shrink-0" aria-hidden="true" />
-            <span className={compact ? "sr-only" : undefined}>{label}</span>
-          </Link>
-        );
-      })}
+    <nav aria-label="เมนูหลัก" className="flex flex-col">
+      {groups.map((g, i) => (
+        <div key={g.heading ?? "main"} role="group" aria-label={g.heading} className={cn("flex flex-col gap-1", i > 0 && "mt-3 border-t border-border pt-3")}>
+          {g.heading && !compact && <p className="px-3.5 pb-1 text-xs text-muted-foreground">{g.heading}</p>}
+          {g.items.map(({ href, label, icon: Icon }) => {
+            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onNavigate}
+                title={compact ? label : undefined}
+                aria-current={active ? "page" : undefined}
+                className={cn(row, active ? "bg-primary-soft font-bold text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+              >
+                <Icon className="size-[18px] shrink-0" aria-hidden="true" />
+                <span className={compact ? "sr-only" : undefined}>{label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }

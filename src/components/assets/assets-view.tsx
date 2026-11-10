@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Pencil, Wrench } from "lucide-react";
+import { Plus, Wrench } from "lucide-react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { canEditAssets, type AssetListItem, type Paged } from "@shared/index";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
+import { AssetCreateDialog } from "@/components/assets/asset-create-dialog";
 import { AssetEditDialog } from "@/components/assets/asset-edit-dialog";
 import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
 import { QrCell } from "@/components/assets/qr-cell";
@@ -25,6 +26,7 @@ export function AssetsView() {
   const { user } = useAuth();
   const canEdit = user ? canEditAssets(user.role) : false; // the server enforces this too
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false); // the "add asset" dialog
   const [recordingId, setRecordingId] = useState<number | null>(null); // record maintenance work for this asset
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({
@@ -72,9 +74,21 @@ export function AssetsView() {
 
   return (
     <div className="grid gap-5">
-      <div>
-        <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">ทะเบียนอุปกรณ์</h1>
-        <p className="mt-1 text-muted-foreground">ค้นหา กรอง และจัดเรียงอุปกรณ์ (ประมวลผลที่ฝั่งเซิร์ฟเวอร์)</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">ทะเบียนอุปกรณ์</h1>
+          <p className="mt-1 text-muted-foreground">ค้นหา กรอง และจัดเรียงอุปกรณ์ (ประมวลผลที่ฝั่งเซิร์ฟเวอร์)</p>
+        </div>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90"
+          >
+            <Plus className="size-5" aria-hidden="true" />
+            เพิ่มอุปกรณ์
+          </button>
+        )}
       </div>
 
       <Card className="grid gap-4 p-4 sm:p-5">
@@ -98,7 +112,7 @@ export function AssetsView() {
         />
       </Card>
 
-      {canEdit && <p className="-mb-2 text-sm text-muted-foreground">ดับเบิลคลิกที่แถวเพื่อแก้ไขอุปกรณ์ (แก้ไขรหัสไม่ได้) หรือกดปุ่มดินสอท้ายแถว</p>}
+      {canEdit && <p className="-mb-2 text-sm text-muted-foreground">ดับเบิลคลิกที่แถวเพื่อแก้ไขอุปกรณ์ (แก้ไขรหัสไม่ได้) · บนจอสัมผัสให้เปิดหน้าอุปกรณ์แล้วกด “แก้ไขข้อมูล”</p>}
       {savedNote && (
         <p role="status" className="rounded-xl bg-ok-soft px-3 py-2.5 text-sm text-ok">
           {savedNote}
@@ -113,13 +127,13 @@ export function AssetsView() {
             <table className="w-full min-w-[940px] text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
+                  <th className="px-4 py-3 font-normal">QR / บันทึกงาน</th>
                   <Th label="รหัส" k="code" sort={sort} dir={dir} onSort={toggleSort} />
                   <Th label="ชื่อ / ยี่ห้อ รุ่น" k="name" sort={sort} dir={dir} onSort={toggleSort} />
                   <th className="px-4 py-3 font-normal">ส่วนงาน / ที่ตั้ง</th>
                   <Th label="สถานะ" k="status" sort={sort} dir={dir} onSort={toggleSort} />
                   <th className="px-4 py-3 font-normal">ล่าสุด</th>
                   <Th label="ครบกำหนดถัดไป" k="nextDue" sort={sort} dir={dir} onSort={toggleSort} />
-                  <th className="px-4 py-3 font-normal">QR Code</th>
                 </tr>
               </thead>
               <tbody aria-busy={loading}>
@@ -147,6 +161,22 @@ export function AssetsView() {
                       if (canEdit && e.key === "Enter" && e.target === e.currentTarget) setEditingId(a.id);
                     }}
                   >
+                    <td className="px-4 py-1.5">
+                      <div className="flex items-center gap-1">
+                        <QrCell asset={a} />
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => setRecordingId(a.id)}
+                            aria-label={`บันทึกงานซ่อมบำรุง ${a.code}`}
+                            title="บันทึกงานซ่อมบำรุง"
+                            className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Wrench className="size-4" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 font-bold">
                       <Link href={`/assets/${a.id}`} className="text-primary underline-offset-2 hover:underline">
                         {a.code}
@@ -167,33 +197,6 @@ export function AssetsView() {
                     </td>
                     <td className="tabular whitespace-nowrap px-4 py-3">{formatDate(a.lastMaintenance)}</td>
                     <td className="tabular whitespace-nowrap px-4 py-3">{a.nextDue ? formatDate(a.nextDue) : <span className="text-muted-foreground">ยังไม่ได้กำหนดแผน</span>}</td>
-                    <td className="px-4 py-1.5">
-                      <div className="flex items-center gap-1">
-                        <QrCell asset={a} />
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => setRecordingId(a.id)}
-                            aria-label={`บันทึกงานซ่อมบำรุง ${a.code}`}
-                            title="บันทึกงานซ่อมบำรุง"
-                            className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <Wrench className="size-4" aria-hidden="true" />
-                          </button>
-                        )}
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => setEditingId(a.id)}
-                            aria-label={`แก้ไข ${a.code}`}
-                            title="แก้ไข"
-                            className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <Pencil className="size-4" aria-hidden="true" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -224,6 +227,21 @@ export function AssetsView() {
         </Card>
       )}
 
+      {creating && (
+        <AssetCreateDialog
+          defaultUnitId={filters.unitId}
+          onClose={(created) => {
+            setCreating(false);
+            if (created) {
+              setText(created.code); // show the new asset: search for its code
+              setPage(1);
+              reload();
+              setSavedNote(`เพิ่มอุปกรณ์ ${created.code} เรียบร้อยแล้ว`);
+              setTimeout(() => setSavedNote(null), 6000);
+            }
+          }}
+        />
+      )}
       {recordingId !== null && (
         <WorkOrderDialog
           assetId={recordingId}

@@ -7,6 +7,7 @@ import { authRouter } from "./auth/routes";
 import { usersRouter } from "./auth/users-routes";
 import { checkOrigin, requireAuth } from "./auth/guard";
 import { dataRouter } from "./routes";
+import { masterRouter } from "./master-data";
 
 export function createApp() {
   const app = express();
@@ -14,6 +15,13 @@ export function createApp() {
   app.set("trust proxy", 1); // Apache/Passenger sits in front on the host (real client IP, https)
   const smallJson = express.json({ limit: "1mb" });
   const photoJson = express.json({ limit: "3mb" }); // base64 of one photo (max 1 MB) + thumbnail
+  app.use((_req, res, next) => {
+    // API responses are data, never pages: no sniffing, no framing, no referrer leaks
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "same-origin");
+    next();
+  });
   app.use((req, res, next) => (req.method === "POST" && /^\/api\/v1\/assets\/\d+\/images\/?$/.test(req.path) ? photoJson(req, res, next) : smallJson(req, res, next)));
   app.use("/api/v1", (_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -48,6 +56,7 @@ export function createApp() {
 
   api.use("/auth", authRouter);
   api.use("/users", requireAuth, usersRouter);
+  api.use("/master", requireAuth, masterRouter);
   api.use(requireAuth, dataRouter);
 
   api.use((_req, res) => {

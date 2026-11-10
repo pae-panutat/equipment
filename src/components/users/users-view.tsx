@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { Check, Trash2, UserCheck, UserPlus, UserX } from "lucide-react";
 import { PASSWORD_MIN_LENGTH, ROLES, ROLE_LABEL, type FilterOptions, type ManagedUser, type Role } from "@shared/index";
 import { Card, CardTitle, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
@@ -32,6 +32,8 @@ export function UsersView() {
   const users = useApi<ManagedUser[]>("/users");
   const filters = useApi<FilterOptions>("/meta/filters");
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const [deleting, setDeleting] = useState<ManagedUser | null>(null);
+  const [statusFor, setStatusFor] = useState<ManagedUser | null>(null); // the user whose status is being chosen
   const [resetting, setResetting] = useState<ManagedUser | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -48,6 +50,18 @@ export function UsersView() {
       setMessage({ tone: "bad", text: e instanceof Error ? e.message : "บันทึกไม่สำเร็จ" });
       users.reload(); // put the controls back to what the server has
     }
+  }
+
+  async function remove(u: ManagedUser) {
+    setMessage(null);
+    try {
+      await apiSend("DELETE", `/users/${u.id}`);
+      setMessage({ tone: "ok", text: `ลบผู้ใช้ ${u.displayName} แล้ว` });
+      users.reload();
+    } catch (e) {
+      setMessage({ tone: "bad", text: e instanceof Error ? e.message : "ลบไม่สำเร็จ" });
+    }
+    setDeleting(null);
   }
 
   return (
@@ -131,14 +145,27 @@ export function UsersView() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => void patch(u.id, { active: !u.active })}
-                            className={`min-h-11 rounded-xl border px-3 ${u.active ? "border-ok/40 text-ok" : "border-bad/40 text-bad"}`}
+                            onClick={() => setStatusFor(u)}
+                            aria-label={`สถานะของ ${u.displayName}: ${u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"} (กดเพื่อเปลี่ยน)`}
+                            title={u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"}
+                            className={`grid size-11 place-items-center rounded-xl hover:bg-muted ${u.active ? "text-ok" : "text-bad"}`}
                           >
-                            {u.active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
+                            {u.active ? <UserCheck className="size-5" aria-hidden="true" /> : <UserX className="size-5" aria-hidden="true" />}
                           </button>
                           {u.username && (
                             <button type="button" onClick={() => setResetting(u)} className="min-h-11 rounded-xl border border-border px-3 text-muted-foreground hover:bg-muted">
                               ตั้งรหัสผ่านใหม่
+                            </button>
+                          )}
+                          {u.id !== me?.id && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleting(u)}
+                              aria-label={`ลบผู้ใช้ ${u.displayName}`}
+                              title="ลบผู้ใช้"
+                              className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
+                            >
+                              <Trash2 className="size-[18px]" aria-hidden="true" />
                             </button>
                           )}
                         </div>
@@ -151,6 +178,59 @@ export function UsersView() {
           )}
         </div>
       </Card>
+
+      {deleting && (
+        <Modal title="ลบผู้ใช้" onClose={() => setDeleting(null)}>
+          <div className="grid gap-4 px-5 py-4 sm:px-6">
+            <p className="text-[15px]">
+              ต้องการลบผู้ใช้ <b>{deleting.displayName}</b> ({deleting.username ?? deleting.cmuEmail}) ถาวรหรือไม่? การลบ<b>กู้คืนไม่ได้</b>
+            </p>
+            <p className="text-sm text-muted-foreground">ลบเฉพาะสิทธิ์เข้าใช้งาน งานซ่อมบำรุง รูป และข้อมูลที่ผู้ใช้เคยบันทึกจะยังอยู่ครบ (ยังเห็นว่าใครเป็นผู้บันทึก)</p>
+            <div className="flex justify-end gap-3 border-t border-border pt-3">
+              <button type="button" data-autofocus onClick={() => setDeleting(null)} className="min-h-11 rounded-xl border border-border px-4 font-bold hover:bg-muted">
+                ยกเลิก
+              </button>
+              <button type="button" onClick={() => void remove(deleting)} className="min-h-11 rounded-xl bg-bad px-4 font-bold text-white">
+                ลบถาวร
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {statusFor && (
+        <Modal title={`สถานะของ ${statusFor.displayName}`} onClose={() => setStatusFor(null)}>
+          <div className="grid gap-3 px-5 py-4 sm:px-6">
+            {([
+              { active: true, label: "ใช้งานอยู่", hint: "เข้าสู่ระบบและใช้งานได้ตามปกติ", Icon: UserCheck, tone: "text-ok" },
+              { active: false, label: "ปิดการใช้งาน", hint: "เข้าสู่ระบบไม่ได้ และจะถูกออกจากระบบทุกเครื่อง", Icon: UserX, tone: "text-bad" },
+            ] as const).map((o) => {
+              const current = statusFor.active === o.active;
+              return (
+                <button
+                  key={o.label}
+                  type="button"
+                  data-autofocus={current ? "" : undefined}
+                  aria-pressed={current}
+                  onClick={() => {
+                    const target = statusFor;
+                    setStatusFor(null);
+                    if (!current) void patch(target.id, { active: o.active });
+                  }}
+                  className={`flex min-h-14 items-center gap-3 rounded-xl border px-4 text-left ${current ? "border-primary bg-muted" : "border-border hover:bg-muted"}`}
+                >
+                  <o.Icon className={`size-5 shrink-0 ${o.tone}`} aria-hidden="true" />
+                  <span className="grid flex-1">
+                    <b>{o.label}</b>
+                    <span className="text-sm text-muted-foreground">{o.hint}</span>
+                  </span>
+                  {current && <Check className="size-5 shrink-0 text-primary" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
 
       {adding && (
         <CreateUserDialog

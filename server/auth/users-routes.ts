@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { organizationUnits, users } from "../../db/schema";
 import { PASSWORD_MIN_LENGTH, ROLES, type ManagedUser } from "../../shared";
@@ -30,6 +30,7 @@ async function listUsers(): Promise<ManagedUser[]> {
     })
     .from(users)
     .leftJoin(organizationUnits, eq(organizationUnits.id, users.unitId))
+    .where(isNull(users.deletedAt))
     // super admins first, then by the order of ROLES (technician, viewer), then by name
     .orderBy(sql`FIELD(${users.role}, ${sql.raw(ROLES.map((r) => `'${r}'`).join(", "))})`, users.displayName);
   return list.map((u) => ({ ...u, active: u.active === 1, lastLoginAt: iso(u.lastLoginAt), createdAt: u.createdAt.toISOString() }));
@@ -85,7 +86,7 @@ usersRouter.patch("/:id", async (req, res) => {
     return httpError(res, 400, "validation_error", parsed.success ? "ไม่พบผู้ใช้" : validationMessage(parsed.error));
   }
   const b = parsed.data;
-  const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  const [target] = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1);
   if (!target) return httpError(res, 404, "not_found", "ไม่พบผู้ใช้");
   if (!(await unitExists(b.unitId))) return httpError(res, 400, "validation_error", "ไม่พบส่วนงานที่เลือก");
   if (b.password && !target.username) return httpError(res, 400, "validation_error", "ผู้ใช้นี้เข้าสู่ระบบด้วย CMU Account เท่านั้น ไม่มีรหัสผ่าน");
@@ -108,5 +109,27 @@ usersRouter.patch("/:id", async (req, res) => {
   if (b.password) set.passwordHash = await hashPassword(b.password);
   if (Object.keys(set).length) await db.update(users).set(set).where(eq(users.id, id));
   if (b.active === false || b.password) await revokeUserSessions(id); // takes effect immediately
+  res.json({ ok: true });
+});
+
+// Delete a user (Super Admin only, like everything in this router). This removes only the ACCESS: the account can no longer sign in
+// and disappears from the list, but the row stays, so the jobs and photos the person recorded keep their author and nothing else is touched.
+// Refused only for yourself and for the last active Super Admin (never lock everyone out).
+usersRouter.delete("/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return httpError(res, 404, "not_found", "ไม่พบผู้ใช้");
+  const [target] = await db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt))).limit(1);
+  if (!target) return httpError(res, 404, "not_found", "ไม่พบผู้ใช้");
+  if (id === req.user!.id) return httpError(res, 409, "self", "ลบบัญชีของตัวเองไม่ได้");
+  if (target.role === "super_admin" && target.active === 1) {
+    const [{ n }] = await db
+      .select({ n: sql<number>`COUNT(*)` })
+      .from(users)
+      .where(and(eq(users.role, "super_admin"), eq(users.active, 1), isNull(users.deletedAt), ne(users.id, id)));
+    if (Number(n) === 0) return httpError(res, 409, "last_admin", "ต้องมีผู้ดูแลระบบที่ใช้งานอยู่อย่างน้อย 1 คน");
+  }
+  await revokeUserSessions(id);
+  // the sign-in names are freed (a new account may reuse them); the display name and role stay for the history
+  await db.update(users).set({ deletedAt: new Date(), active: 0, username: null, passwordHash: null, cmuEmail: null, unitId: null }).where(eq(users.id, id));
   res.json({ ok: true });
 });

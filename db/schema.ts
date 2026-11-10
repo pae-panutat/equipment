@@ -96,6 +96,8 @@ export const assets = mysqlTable(
     index("ix_asset_owner_type_status").on(t.ownerUnitId, t.typeId, t.status),
     index("ix_asset_type").on(t.typeId),
     index("ix_asset_location").on(t.locationId),
+    index("ix_asset_status").on(t.status), // status filter / sort without a unit filter
+    index("ix_asset_name").on(t.name), // sort by name
   ],
 );
 
@@ -113,7 +115,10 @@ export const maintenancePlans = mysqlTable(
     active: int("active").notNull().default(1),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("ix_plan_asset").on(t.assetId), index("ix_plan_due").on(t.active, t.nextDueDate)],
+  (t) => [
+    index("ix_plan_asset_due").on(t.assetId, t.active, t.nextDueDate), // MIN(next_due_date) per asset in the register, straight from the index
+    index("ix_plan_due").on(t.active, t.nextDueDate), // dashboard: what is due soon
+  ],
 );
 
 // A job to do (planned / repair / inspection). Result and cost live on the same row in this first slice.
@@ -141,9 +146,8 @@ export const workOrders = mysqlTable(
   },
   (t) => [
     uniqueIndex("uq_wo_number").on(t.number),
-    index("ix_wo_asset").on(t.assetId, t.performedOn),
-    index("ix_wo_status_due").on(t.status, t.dueDate),
-    index("ix_wo_completed").on(t.completedAt),
+    index("ix_wo_asset_status").on(t.assetId, t.status, t.performedOn), // last maintenance / jobs in progress per asset, from the index alone
+    index("ix_wo_status_performed").on(t.status, t.performedOn), // dashboard: finished jobs in a date range
   ],
 );
 
@@ -153,6 +157,7 @@ export const assetImages = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     assetId: int("asset_id").notNull(),
+    dir: varchar("dir", { length: 160 }).notNull().default(""), // folder under UPLOAD_DIR: assets/<unit folder>/<assetId> (stored, so a later rename or move of the unit never loses the file)
     fileName: varchar("file_name", { length: 64 }).notNull(), // random name chosen by the server (never the uploaded name)
     thumbName: varchar("thumb_name", { length: 64 }).notNull(),
     contentType: varchar("content_type", { length: 32 }).notNull(),
@@ -178,6 +183,7 @@ export const users = mysqlTable(
     unitId: int("unit_id"), // the unit (and its sub-units) this user may see; NULL = none (except super_admin)
     active: int("active").notNull().default(1),
     lastLoginAt: datetime("last_login_at", { mode: "date" }),
+    deletedAt: datetime("deleted_at", { mode: "date" }), // set when a Super Admin deletes the user: access is removed, the row stays so recorded jobs/photos keep their author
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [uniqueIndex("uq_user_username").on(t.username), uniqueIndex("uq_user_cmu_email").on(t.cmuEmail), index("ix_user_unit").on(t.unitId)],

@@ -1,6 +1,7 @@
 "use client";
 
 import { ASSET_STATUSES, ASSET_STATUS_LABEL, type AssetStatus, type FilterOptions } from "@shared/index";
+import { unitOptions } from "@/lib/unit-options";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 
@@ -19,18 +20,6 @@ function Field({ label, children, className, emphasis = false }: { label: string
 }
 
 /** Units are shown as an indented tree so sub-units are easy to tell apart. */
-function unitOptions(units: FilterOptions["units"]) {
-  const out: { id: number; label: string }[] = [];
-  const walk = (parent: number | null, depth: number) => {
-    for (const u of units.filter((x) => x.parentId === parent)) {
-      out.push({ id: u.id, label: `${"— ".repeat(depth)}${u.name}` });
-      walk(u.id, depth + 1);
-    }
-  };
-  walk(null, 0);
-  return out;
-}
-
 export function FilterBar({
   value,
   onChange,

@@ -15,7 +15,7 @@ import {
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
 import { STATUS_DOT } from "@/components/status-badge";
 import { Card, CardTitle, EmptyState, ErrorState, Skeleton, Stat } from "@/components/ui/card";
-import { formatBaht, formatDate, formatDateTime, formatMonth, formatNumber } from "@/lib/format";
+import { formatDate, formatDateTime, formatMonth, formatNumber } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
 import { CountUp, SegmentBar } from "./charts";

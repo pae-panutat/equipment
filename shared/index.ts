@@ -208,3 +208,22 @@ export type ManagedUser = Omit<AuthUser, "loginMethod" | "seesAllUnits"> & { act
 export function safeNextPath(value: string | null | undefined): string {
   return typeof value === "string" && /^\/(?!\/)[^\\\s]*$/.test(value) && value.length <= 300 ? value : "/";
 }
+
+// ---- master data (Super Admin): organization units, asset types, locations ----
+
+export type MasterKind = "units" | "types" | "locations";
+export const LOCATION_KINDS = ["campus", "building", "floor", "room"] as const;
+export type LocationKind = (typeof LOCATION_KINDS)[number];
+export const LOCATION_KIND_LABEL: Record<LocationKind, string> = { campus: "วิทยาเขต", building: "อาคาร", floor: "ชั้น", room: "ห้อง" };
+
+export type MasterItem = {
+  id: number;
+  parentId: number | null;
+  code: string;
+  name: string;
+  kind: string | null; // locations only
+  archived: boolean;
+  assetCount: number; // assets that point at it (any status)
+  childCount: number; // active rows directly under it
+  userCount: number; // active users assigned to it (units only)
+};

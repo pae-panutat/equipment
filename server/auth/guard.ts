@@ -23,6 +23,8 @@ function allowedOrigins(req: Request): Set<string> {
 
 export function checkOrigin(req: Request, res: Response, next: NextFunction) {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+  // Browsers say how the request was initiated: a state-changing request from another site is never legitimate
+  if (req.get("sec-fetch-site") === "cross-site") return httpError(res, 403, "bad_origin", "คำขอไม่ได้มาจากเว็บไซต์นี้");
   const origin = req.get("origin");
   if (origin && !allowedOrigins(req).has(origin)) return httpError(res, 403, "bad_origin", "คำขอไม่ได้มาจากเว็บไซต์นี้");
   next();

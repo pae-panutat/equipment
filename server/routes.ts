@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { eq, sql, type SQL } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   ASSET_EDIT_ROLES,
@@ -8,7 +8,6 @@ import {
   DUE_SOON_DAYS,
   type LocationOption,
   type AssetDetail,
-  type AuthUser,
   type AssetListItem,
   type AssetStatus,
   type DashboardSummary,
@@ -25,8 +24,8 @@ import { db } from "./db";
 import { addDays, addMonths, bangkokToday } from "./dates";
 import { allowedUnitIds, assetScope, rangeQuery, rows, scopeQuery } from "./query";
 import { authorizedAsset, contentVersion } from "./asset-access";
-import { qrSvg, scanUrl } from "./qr";
-import { assetImagesRouter } from "./asset-images";
+import { newQrToken, qrSvg, scanUrl } from "./qr";
+import { assetImagesRouter, relocateAssetImages } from "./asset-images";
 import { WORK_ORDER_VERSION_KEYS, workOrdersRouter } from "./work-orders";
 
 export const dataRouter = Router();
@@ -290,8 +289,7 @@ const refId = z.number().int().positive();
 
 // Every editable field, all optional (send only what changed). `code` and the QR token are deliberately not editable:
 // .strict() rejects them. `expectedUpdatedAt` is the version the user was looking at.
-const assetPatch = z
-  .object({
+const assetFields = z.object({
     name: z.string().trim().min(1, "กรุณากรอกชื่ออุปกรณ์").max(191, "ชื่อยาวเกิน 191 ตัวอักษร"),
     typeId: refId,
     ownerUnitId: refId,
@@ -307,9 +305,7 @@ const assetPatch = z
     installDate: optDate,
     warrantyEnd: optDate,
   })
-  .partial()
-  .extend({ expectedVersion: z.string().min(1) })
-  .strict();
+const assetPatch = assetFields.partial().extend({ expectedVersion: z.string().min(1) }).strict();
 
 dataRouter.patch("/assets/:id", requireRole(...ASSET_EDIT_ROLES), async (req, res) => {
   const id = idParam.safeParse(req.params.id);
@@ -363,7 +359,70 @@ dataRouter.patch("/assets/:id", requireRole(...ASSET_EDIT_ROLES), async (req, re
   if (result === "stale") {
     return void res.status(409).json({ error: { code: "conflict", message: "ข้อมูลนี้ถูกแก้ไขโดยผู้อื่นไปแล้ว กรุณาปิดหน้าต่างแล้วเปิดใหม่เพื่อดูข้อมูลล่าสุด" } });
   }
+  if (changes.ownerUnitId !== undefined) await relocateAssetImages(asset.id).catch((e) => console.error("photo relocation failed", e)); // photo files follow the asset to its new unit folder
   res.json({ ok: true });
+});
+
+// ---- adding an asset (Super Admin / Technician only) ----
+
+const assetCreate = assetFields
+  .partial()
+  .required({ name: true, typeId: true, ownerUnitId: true })
+  .extend({ code: z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/, "รหัสอุปกรณ์ใช้ได้เฉพาะ A-Z a-z 0-9 . _ - ยาวไม่เกิน 40 ตัว และต้องขึ้นต้นด้วยตัวอักษรหรือตัวเลข") })
+  .strict();
+
+const refActive = async (table: "asset_types" | "organization_units" | "locations", value: number) =>
+  (await rows<{ id: number }>(sql`SELECT id FROM ${sql.raw(table)} WHERE id = ${value} AND archived_at IS NULL`)).length > 0;
+const isDuplicateKey = (err: unknown) => {
+  const e = err as { code?: string; errno?: number; cause?: { code?: string; errno?: number } };
+  return e?.code === "ER_DUP_ENTRY" || e?.errno === 1062 || e?.cause?.code === "ER_DUP_ENTRY" || e?.cause?.errno === 1062;
+};
+
+dataRouter.post("/assets", requireRole(...ASSET_EDIT_ROLES), async (req, res) => {
+  const user = req.user!;
+  const bad = (status: number, code: string, message: string) => void res.status(status).json({ error: { code, message } });
+  const parsed = assetCreate.safeParse(req.body);
+  if (!parsed.success) return bad(400, "validation_error", parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง");
+  const b = parsed.data;
+  const status = b.status ?? "active";
+  const problem = assetStatusProblem(status, 0); // a new asset has no job, so it cannot start as "in progress"
+  if (problem) return bad(400, "status_conflict", problem);
+  if (!(await refActive("asset_types", b.typeId))) return bad(400, "validation_error", "ไม่พบประเภทอุปกรณ์ที่เลือก");
+  if (!(await refActive("organization_units", b.ownerUnitId))) return bad(400, "validation_error", "ไม่พบส่วนงานที่เลือก");
+  if (b.locationId != null && !(await refActive("locations", b.locationId))) return bad(400, "validation_error", "ไม่พบสถานที่ที่เลือก");
+  const allowed = await allowedUnitIds(user); // a technician signed in with CMU can only add to their own unit
+  if (allowed && !allowed.includes(b.ownerUnitId)) return bad(403, "forbidden", "ไม่มีสิทธิ์เพิ่มอุปกรณ์ในส่วนงานนี้");
+  try {
+    const [row] = await db
+      .insert(assets)
+      .values({
+        code: b.code, name: b.name, typeId: b.typeId, ownerUnitId: b.ownerUnitId, status, locationId: b.locationId ?? null,
+        locationDetail: b.locationDetail ?? null, brand: b.brand ?? null, model: b.model ?? null, serialNumber: b.serialNumber ?? null,
+        legacyAssetNo: b.legacyAssetNo ?? null, purchaseDate: b.purchaseDate ?? null, installDate: b.installDate ?? null,
+        warrantyEnd: b.warrantyEnd ?? null, notes: b.notes ?? null, qrToken: newQrToken(), // its QR code exists from the start
+      })
+      .$returningId();
+    res.status(201).json({ id: row.id, code: b.code });
+  } catch (err) {
+    if (isDuplicateKey(err)) return bad(409, "duplicate", "รหัสอุปกรณ์นี้มีอยู่แล้ว กรุณาใช้รหัสอื่น");
+    throw err;
+  }
+});
+
+// A suggested code for a new asset: <type>-<unit>-<next number>, e.g. AC-ENG-004. The person can still change it.
+dataRouter.get("/meta/next-asset-code", requireRole(...ASSET_EDIT_ROLES), async (req, res) => {
+  const q = z.object({ typeId: z.coerce.number().int().positive(), unitId: z.coerce.number().int().positive() }).safeParse(req.query);
+  if (!q.success) return void res.status(400).json({ error: { code: "validation_error", message: "ต้องเลือกประเภทและส่วนงานก่อน" } });
+  const [t] = await rows<{ code: string }>(sql`SELECT code FROM asset_types WHERE id = ${q.data.typeId} AND archived_at IS NULL`);
+  const [u] = await rows<{ code: string }>(sql`SELECT code FROM organization_units WHERE id = ${q.data.unitId} AND archived_at IS NULL`);
+  if (!t || !u) return void res.status(404).json({ error: { code: "not_found", message: "ไม่พบประเภทหรือส่วนงาน" } });
+  const allowed = await allowedUnitIds(req.user!);
+  if (allowed && !allowed.includes(q.data.unitId)) return void res.status(403).json({ error: { code: "forbidden", message: "ไม่มีสิทธิ์ในส่วนงานนี้" } });
+  const clean = (v: string) => v.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "").toUpperCase();
+  const prefix = `${clean(t.code)}-${clean(u.code)}`.slice(0, 36);
+  const used = await rows<{ code: string }>(sql`SELECT code FROM assets WHERE code LIKE ${prefix + "-%"}`);
+  const max = used.reduce((m, r) => Math.max(m, Number(/-(\d+)$/.exec(r.code)?.[1] ?? 0)), 0);
+  res.json({ code: `${prefix}-${String(max + 1).padStart(3, "0")}` });
 });
 
 dataRouter.use(workOrdersRouter);

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { LoadingBar } from "@/components/loading-bar";
 import { AppShell } from "@/components/app-shell";
 import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")==="light")document.documentElement.classList.remove("dark")}catch(e){}` }} />
       </head>
       <body>
+        <LoadingBar />
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>

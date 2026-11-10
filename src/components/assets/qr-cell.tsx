@@ -29,7 +29,7 @@ export function QrCell({ asset }: { asset: Asset }) {
     // visible area without scrollbars (clientWidth/Height); never place the popover off-screen
     const vw = document.documentElement.clientWidth || window.innerWidth;
     const vh = document.documentElement.clientHeight || window.innerHeight;
-    const left = Math.max(8, Math.min(r.right - POPOVER_W, vw - POPOVER_W - 8));
+    const left = Math.max(8, Math.min(r.left, vw - POPOVER_W - 8)); // the QR column is the first one, so the popup lines up with its left side
     const below = r.bottom + 4;
     const top = below + POPOVER_H > vh ? Math.max(8, r.top - POPOVER_H - 4) : below;
     setPos({ top, left });

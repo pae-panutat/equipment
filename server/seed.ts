@@ -18,7 +18,7 @@ async function main() {
   if (config.isProd) throw new Error("Refusing to seed demo data in production");
   await runMigrations();
 
-  const existing = await db.select({ id: organizationUnits.id }).from(organizationUnits).where(eq(organizationUnits.code, "DEMO-U"));
+  const existing = await db.select({ id: organizationUnits.id }).from(organizationUnits).where(eq(organizationUnits.code, "DEMO-A"));
   if (existing.length && !process.argv.includes("--reset")) {
     console.log("Demo data already present (use --reset to rebuild).");
     await seedDevUsers();
@@ -33,14 +33,13 @@ async function main() {
   const today = bangkokToday();
 
   // ---- organisation units (fictitious) ----
-  const [root] = await db.insert(organizationUnits).values({ code: "DEMO-U", name: "มหาวิทยาลัยตัวอย่าง (ข้อมูลสมมติ)" }).$returningId();
   const units: { id: number; code: string; short: string }[] = [];
   for (const [code, name, short] of [
     ["DEMO-A", "คณะตัวอย่าง A (ข้อมูลสมมติ)", "A"],
     ["DEMO-B", "คณะตัวอย่าง B (ข้อมูลสมมติ)", "B"],
     ["DEMO-C", "สำนักตัวอย่าง C (ข้อมูลสมมติ)", "C"],
   ] as const) {
-    const [u] = await db.insert(organizationUnits).values({ code, name, parentId: root.id }).$returningId();
+    const [u] = await db.insert(organizationUnits).values({ code, name }).$returningId();
     units.push({ id: u.id, code, short });
   }
 

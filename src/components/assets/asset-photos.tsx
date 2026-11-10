@@ -70,23 +70,12 @@ export function AssetPhotos({ assetId, images, canEdit, onChanged }: { assetId: 
               <Camera className="size-4" aria-hidden="true" />
               {photo ? "เปลี่ยนรูป" : "เพิ่มรูป"}
             </button>
-            {photo &&
-              (confirmDelete ? (
-                <>
-                  <span className="text-sm">ลบรูปนี้ถาวร?</span>
-                  <button type="button" disabled={working !== null} onClick={() => void remove()} className="min-h-11 rounded-xl bg-bad px-4 font-bold text-white disabled:opacity-50">
-                    ยืนยันลบ
-                  </button>
-                  <button type="button" disabled={working !== null} onClick={() => setConfirmDelete(false)} className={btn}>
-                    ไม่ลบ
-                  </button>
-                </>
-              ) : (
-                <button type="button" disabled={working !== null} onClick={() => setConfirmDelete(true)} className={`${btn} text-bad`}>
-                  <Trash2 className="size-4" aria-hidden="true" />
-                  ลบรูป
-                </button>
-              ))}
+            {photo && (
+              <button type="button" disabled={working !== null} onClick={() => (setError(null), setConfirmDelete(true))} className={`${btn} text-bad`}>
+                <Trash2 className="size-4" aria-hidden="true" />
+                ลบรูป
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -114,6 +103,31 @@ export function AssetPhotos({ assetId, images, canEdit, onChanged }: { assetId: 
         <p className="mt-3 rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
           ยังไม่มีรูป กด &quot;เพิ่มรูป&quot; เพื่อถ่ายหรือเลือกรูปอุปกรณ์ (JPG, JPEG หรือ PNG ไฟล์ที่เก็บไม่เกิน 1 MB, 1 รูปต่ออุปกรณ์)
         </p>
+      )}
+
+      {confirmDelete && photo && (
+        <Modal title="ลบรูปอุปกรณ์" onClose={() => setConfirmDelete(false)} canDismiss={working === null}>
+          <div className="grid gap-4 px-5 py-4 sm:px-6">
+            <p className="text-[15px]">
+              ต้องการลบรูปนี้ถาวรหรือไม่? การลบ<b>กู้คืนไม่ได้</b>
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src(assetId, photo.id)} alt="รูปที่จะลบ" className="max-h-48 w-auto max-w-full justify-self-center rounded-lg object-contain" />
+            {error && (
+              <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">
+                {error}
+              </p>
+            )}
+            <div className="flex justify-end gap-3 border-t border-border pt-3">
+              <button type="button" data-autofocus disabled={working !== null} onClick={() => setConfirmDelete(false)} className={btn}>
+                ยกเลิก
+              </button>
+              <button type="button" disabled={working !== null} onClick={() => void remove()} className="min-h-11 rounded-xl bg-bad px-4 font-bold text-white disabled:opacity-50">
+                {working ? "กำลังลบ..." : "ลบถาวร"}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {large && photo && (
