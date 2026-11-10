@@ -1,6 +1,8 @@
 // Development seed: FICTITIOUS demo data only. Safe to re-run (skips if already seeded; --reset rebuilds).
 import { eq } from "drizzle-orm";
-import { assets, assetTypes, locations, maintenancePlans, organizationUnits, workOrders } from "../db/schema";
+import { assets, assetTypes, locations, maintenancePlans, organizationUnits, users, workOrders } from "../db/schema";
+import { hashPassword } from "./auth/password";
+import { ensureQrTokens } from "./qr";
 import type { AssetStatus } from "../shared";
 import { config } from "./config";
 import { db, pool } from "./db";
@@ -18,7 +20,9 @@ async function main() {
 
   const existing = await db.select({ id: organizationUnits.id }).from(organizationUnits).where(eq(organizationUnits.code, "DEMO-U"));
   if (existing.length && !process.argv.includes("--reset")) {
-    console.log("Demo data already present (use --reset to rebuild). Nothing to do.");
+    console.log("Demo data already present (use --reset to rebuild).");
+    await seedDevUsers();
+    await ensureQrTokens();
     return;
   }
   if (process.argv.includes("--reset")) {
@@ -157,6 +161,23 @@ async function main() {
     }
   }
   console.log(`Seeded ${created.length} assets, work orders: ${woNo - 1}`);
+  await seedDevUsers();
+  await ensureQrTokens();
+}
+
+// Development sign-in accounts (local database only; seed refuses to run in production).
+async function seedDevUsers() {
+  const DEV_PASSWORD = "dev-password-1234";
+  const devUsers = [
+    { username: "dev-admin", displayName: "ผู้ดูแลระบบ (ทดสอบ)", role: "super_admin" as const, unitId: null },
+    { username: "dev-tech", displayName: "ช่างเทคนิค (ทดสอบ)", role: "technician" as const, unitId: null }, // the single technician account: sees every unit, so no unit is assigned
+  ];
+  for (const u of devUsers) {
+    const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.username, u.username));
+    if (exists) await db.update(users).set({ unitId: u.unitId }).where(eq(users.id, exists.id)); // units are recreated by --reset
+    else await db.insert(users).values({ ...u, passwordHash: await hashPassword(DEV_PASSWORD) });
+  }
+  console.log(`Dev accounts: ${devUsers.map((u) => u.username).join(", ")} (password: ${DEV_PASSWORD})`);
 }
 
 main()

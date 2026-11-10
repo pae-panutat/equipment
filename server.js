@@ -3,7 +3,7 @@
 const http = require("node:http");
 const next = require("next");
 const { createApp } = require("./dist/server/app");
-const { runMigrations } = require("./dist/server/migrate");
+const { prepare } = require("./dist/server/startup");
 
 const dev = process.env.NODE_ENV !== "production";
 const port = Number(process.env.PORT || 3000);
@@ -11,7 +11,7 @@ const nextApp = next({ dev, dir: __dirname });
 const handleNext = nextApp.getRequestHandler();
 
 (async () => {
-  await runMigrations();
+  await prepare();
   await nextApp.prepare();
   const api = createApp();
   http

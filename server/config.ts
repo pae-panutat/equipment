@@ -21,7 +21,27 @@ export const config = {
   },
   // Shared secret for internal endpoints called by the deploy pipeline
   restartToken: process.env.RESTART_TOKEN || "",
-  // Business endpoints have no login yet: closed in production unless this is set (never set it on a real deployment)
-  allowUnauthenticatedDemo: process.env.ALLOW_DEMO_DATA === "true",
+  // Public base URL of the site (https://equiplog.ddns.net). Used for the OAuth redirect URI and the CSRF origin check.
+  // Empty in production = derive it from the request.
+  publicUrl: (process.env.SITE_URL || (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000")).replace(/\/+$/, ""),
+  // First Super Admin(s). CMU emails (comma separated) are promoted on CMU login; a local account is created at startup if missing.
+  bootstrap: {
+    cmuEmails: (process.env.BOOTSTRAP_ADMIN_CMU_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean),
+    username: process.env.BOOTSTRAP_ADMIN_USERNAME || "",
+    password: process.env.BOOTSTRAP_ADMIN_PASSWORD || "",
+  },
+  // CMU Account OAuth. Disabled until CMU_OAUTH_CLIENT_ID/SECRET are set. The endpoints must be confirmed against the
+  // registration CMU gives you, so every one of them can be overridden.
+  cmuOAuth: {
+    clientId: process.env.CMU_OAUTH_CLIENT_ID || "",
+    clientSecret: process.env.CMU_OAUTH_CLIENT_SECRET || "",
+    authorizeUrl: process.env.CMU_OAUTH_AUTHORIZE_URL || "https://oauth.cmu.ac.th/v1/Authorize.aspx",
+    tokenUrl: process.env.CMU_OAUTH_TOKEN_URL || "https://oauth.cmu.ac.th/v1/GetToken.aspx",
+    userInfoUrl: process.env.CMU_OAUTH_USERINFO_URL || "https://misapi.cmu.ac.th/cmuitaccount/v1/api/cmuitaccount/basicinfo",
+    scope: process.env.CMU_OAUTH_SCOPE || "cmuitaccount.basicinfo",
+    emailField: process.env.CMU_OAUTH_EMAIL_FIELD || "cmuitaccount",
+    // Fields of the account info that hold the person's faculty/office name; used to pick their unit on first sign-in
+    orgFields: (process.env.CMU_OAUTH_ORG_FIELDS || "organization_name_TH,organization_name_EN").split(",").map((f) => f.trim()).filter(Boolean),
+  },
   migrationsDir: path.resolve(__dirname, "..", "..", "db", "migrations"),
 };

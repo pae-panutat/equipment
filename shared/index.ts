@@ -68,9 +68,85 @@ export type AssetListItem = {
   nextDue: string | null;
 };
 
+export type AssetDetail = {
+  id: number;
+  /** Raw ids and a content version, used by the edit dialog. Saving is refused if the editable fields changed since this version. */
+  typeId: number;
+  ownerUnitId: number;
+  locationId: number | null;
+  version: string;
+  code: string;
+  legacyAssetNo: string | null;
+  name: string;
+  type: string;
+  brand: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  status: AssetStatus;
+  unit: string;
+  location: string | null;
+  locationDetail: string | null;
+  purchaseDate: string | null;
+  installDate: string | null;
+  warrantyEnd: string | null;
+  notes: string | null;
+  plans: { id: number; title: string; intervalValue: number; intervalUnit: IntervalUnit; nextDueDate: string | null; active: boolean }[];
+  workOrders: { id: number; number: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; priority: Priority; dueDate: string | null; performedOn: string | null }[];
+};
+
 export type Paged<T> = { items: T[]; page: number; pageSize: number; total: number };
 
 export type FilterOptions = {
   units: { id: number; name: string; parentId: number | null }[];
   types: { id: number; name: string }[];
 };
+
+// ---- auth ----
+
+export const ROLES = ["super_admin", "technician", "viewer"] as const;
+export type Role = (typeof ROLES)[number];
+export const ROLE_LABEL: Record<Role, string> = {
+  super_admin: "ผู้ดูแลระบบ",
+  technician: "ช่างเทคนิค",
+  viewer: "ผู้ชมข้อมูล",
+};
+
+export const LOGIN_METHODS = ["local", "cmu"] as const;
+export type LoginMethod = (typeof LOGIN_METHODS)[number];
+
+export const PASSWORD_MIN_LENGTH = 10;
+
+/** "Remember me" keeps a sign-in for one year. (Chrome limits any cookie to 400 days, so 365 is the most that works everywhere.) */
+export const REMEMBER_DAYS = 365;
+
+export type AuthUser = {
+  id: number;
+  displayName: string;
+  username: string | null;
+  cmuEmail: string | null;
+  role: Role;
+  unitId: number | null;
+  unitName: string | null;
+  /** How this session signed in. */
+  loginMethod: LoginMethod;
+  /**
+   * Data scope of this session: Super Admin always sees every unit; a Technician sees every unit only when signed in
+   * with username/password; everyone else (and everyone signed in with CMU Account) sees only their own unit.
+   */
+  seesAllUnits: boolean;
+};
+
+/** Who may edit asset records (Technician only within the units they can see). */
+export const ASSET_EDIT_ROLES: readonly Role[] = ["super_admin", "technician"];
+export const canEditAssets = (role: Role) => ASSET_EDIT_ROLES.includes(role);
+
+export type LocationOption = { id: number; label: string };
+
+export type AuthConfig = { cmuEnabled: boolean };
+
+export type ManagedUser = Omit<AuthUser, "loginMethod" | "seesAllUnits"> & { active: boolean; lastLoginAt: string | null; createdAt: string };
+
+/** A same-site path that is safe to redirect to after login ("/q/abc"), or "/" for anything else (open-redirect guard). */
+export function safeNextPath(value: string | null | undefined): string {
+  return typeof value === "string" && /^\/(?!\/)[^\\\s]*$/.test(value) && value.length <= 300 ? value : "/";
+}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { AppShell } from "@/components/app-shell";
+import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
 // LINE Seed Sans TH is used for the whole site (Thai + Latin).
@@ -29,7 +30,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")==="light")document.documentElement.classList.remove("dark")}catch(e){}` }} />
       </head>
       <body>
-        <AppShell>{children}</AppShell>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

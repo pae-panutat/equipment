@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Dev only: lets a phone on the same Wi-Fi open http://<this PC's IP>:3000 (e.g. to test scanning QR codes).
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*"],
   // The host's Apache caches s-maxage responses; keep pages fresh after each deploy
   async headers() {
     return [

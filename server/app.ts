@@ -3,11 +3,15 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { config } from "./config";
+import { authRouter } from "./auth/routes";
+import { usersRouter } from "./auth/users-routes";
+import { checkOrigin, requireAuth } from "./auth/guard";
 import { dataRouter } from "./routes";
 
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  app.set("trust proxy", 1); // Apache/Passenger sits in front on the host (real client IP, https)
   app.use(express.json({ limit: "1mb" }));
   app.use("/api/v1", (_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
@@ -15,6 +19,7 @@ export function createApp() {
   });
 
   const api = express.Router();
+  api.use(checkOrigin);
 
   api.get("/health", async (_req, res) => {
     try {
@@ -39,7 +44,9 @@ export function createApp() {
     setTimeout(() => process.exit(0), 500);
   });
 
-  api.use(dataRouter);
+  api.use("/auth", authRouter);
+  api.use("/users", requireAuth, usersRouter);
+  api.use(requireAuth, dataRouter);
 
   api.use((_req, res) => {
     res.status(404).json({ error: { code: "not_found", message: "Not found" } });

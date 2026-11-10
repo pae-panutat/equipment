@@ -1,9 +1,9 @@
 import { createApp } from "./app";
-import { runMigrations } from "./migrate";
+import { prepare } from "./startup";
 import { config } from "./config";
 
 // Standalone API process for local development (Next dev server proxies /api/v1 here).
-runMigrations()
+prepare()
   .then(() => {
     createApp().listen(config.apiPort, () => console.log(`API listening on http://localhost:${config.apiPort}`));
   })

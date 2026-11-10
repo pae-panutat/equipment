@@ -8,6 +8,34 @@
       "when": 1794216099701,
       "tag": "0000_core_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1794282158062,
+      "tag": "0001_auth_users_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1794282733394,
+      "tag": "0002_session_login_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1794283695960,
+      "tag": "0003_asset_qr_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1794291117331,
+      "tag": "0004_remove_unit_admin_role",
+      "breakpoints": true
     }
   ]
 }

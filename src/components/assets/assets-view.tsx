@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Pencil } from "lucide-react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import type { AssetListItem, Paged } from "@shared/index";
+import { canEditAssets, type AssetListItem, type Paged } from "@shared/index";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
+import { AssetEditDialog } from "@/components/assets/asset-edit-dialog";
+import { QrCell } from "@/components/assets/qr-cell";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
@@ -16,6 +21,10 @@ const PAGE_SIZE = 20;
 
 export function AssetsView() {
   const sp = useSearchParams();
+  const { user } = useAuth();
+  const canEdit = user ? canEditAssets(user.role) : false; // the server enforces this too
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [savedNote, setSavedNote] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({
     ...EMPTY_FILTERS,
     unitId: sp.get("unitId") ?? "",
@@ -87,12 +96,19 @@ export function AssetsView() {
         />
       </Card>
 
+      {canEdit && <p className="-mb-2 text-sm text-muted-foreground">ดับเบิลคลิกที่แถวเพื่อแก้ไขอุปกรณ์ (แก้ไขรหัสไม่ได้) หรือกดปุ่มดินสอท้ายแถว</p>}
+      {savedNote && (
+        <p role="status" className="rounded-xl bg-ok-soft px-3 py-2.5 text-sm text-ok">
+          {savedNote}
+        </p>
+      )}
+
       {error && <ErrorState message={error} onRetry={reload} />}
 
       {!error && (
         <Card className="p-0 sm:p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[940px] text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
                   <Th label="รหัส" k="code" sort={sort} dir={dir} onSort={toggleSort} />
@@ -101,20 +117,39 @@ export function AssetsView() {
                   <Th label="สถานะ" k="status" sort={sort} dir={dir} onSort={toggleSort} />
                   <th className="px-4 py-3 font-normal">ล่าสุด</th>
                   <Th label="ครบกำหนดถัดไป" k="nextDue" sort={sort} dir={dir} onSort={toggleSort} />
+                  <th className="px-4 py-3 font-normal">QR Code</th>
                 </tr>
               </thead>
               <tbody aria-busy={loading}>
                 {loading && !data &&
                   Array.from({ length: 6 }, (_, i) => (
                     <tr key={i} className="border-b border-border">
-                      <td colSpan={6} className="px-4 py-3">
+                      <td colSpan={7} className="px-4 py-3">
                         <Skeleton className="h-9" />
                       </td>
                     </tr>
                   ))}
                 {data?.items.map((a) => (
-                  <tr key={a.id} className={cn("border-b border-border last:border-0", loading && "opacity-60")}>
-                    <td className="whitespace-nowrap px-4 py-3 font-bold">{a.code}</td>
+                  <tr
+                    key={a.id}
+                    className={cn("border-b border-border last:border-0", loading && "opacity-60", canEdit && "cursor-pointer hover:bg-muted/40")}
+                    title={canEdit ? "ดับเบิลคลิกเพื่อแก้ไข" : undefined}
+                    tabIndex={canEdit ? 0 : undefined}
+                    onMouseDown={(e) => {
+                      if (canEdit && e.detail > 1) e.preventDefault(); // a double click should not select a word
+                    }}
+                    onDoubleClick={(e) => {
+                      if (canEdit && !(e.target as HTMLElement).closest("a, button, input, select, textarea")) setEditingId(a.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (canEdit && e.key === "Enter" && e.target === e.currentTarget) setEditingId(a.id);
+                    }}
+                  >
+                    <td className="whitespace-nowrap px-4 py-3 font-bold">
+                      <Link href={`/assets/${a.id}`} className="text-primary underline-offset-2 hover:underline">
+                        {a.code}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">
                       <div>{a.name}</div>
                       <div className="text-muted-foreground">
@@ -130,6 +165,22 @@ export function AssetsView() {
                     </td>
                     <td className="tabular whitespace-nowrap px-4 py-3">{formatDate(a.lastMaintenance)}</td>
                     <td className="tabular whitespace-nowrap px-4 py-3">{a.nextDue ? formatDate(a.nextDue) : <span className="text-muted-foreground">ยังไม่ได้กำหนดแผน</span>}</td>
+                    <td className="px-4 py-1.5">
+                      <div className="flex items-center gap-1">
+                        <QrCell asset={a} />
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(a.id)}
+                            aria-label={`แก้ไข ${a.code}`}
+                            title="แก้ไข"
+                            className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Pencil className="size-4" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -158,6 +209,20 @@ export function AssetsView() {
             </div>
           )}
         </Card>
+      )}
+
+      {editingId !== null && (
+        <AssetEditDialog
+          assetId={editingId}
+          onClose={(code) => {
+            setEditingId(null);
+            reload(); // also after a conflict, so the table shows the latest data
+            if (code) {
+              setSavedNote(`บันทึกการแก้ไข ${code} เรียบร้อยแล้ว`);
+              setTimeout(() => setSavedNote(null), 5000);
+            }
+          }}
+        />
       )}
     </div>
   );

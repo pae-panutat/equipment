@@ -11,7 +11,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
-import { ASSET_STATUSES, INTERVAL_UNITS, PRIORITIES, WORK_ORDER_KINDS, WORK_ORDER_STATUSES } from "../shared";
+import { ASSET_STATUSES, INTERVAL_UNITS, PRIORITIES, ROLES, WORK_ORDER_KINDS, WORK_ORDER_STATUSES } from "../shared";
 
 // Key/value table for app-level metadata
 export const appMeta = mysqlTable("app_meta", {
@@ -85,11 +85,14 @@ export const assets = mysqlTable(
     // type-specific values (validated by the API against the type's field definitions)
     attributes: text("attributes"),
     notes: text("notes"),
+    // Random, unguessable id printed in the asset's QR code (/q/<token>). Filled in by the app (server/qr.ts), never reused.
+    qrToken: varchar("qr_token", { length: 32 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
   (t) => [
     uniqueIndex("uq_asset_code").on(t.code),
+    uniqueIndex("uq_asset_qr_token").on(t.qrToken),
     index("ix_asset_owner_type_status").on(t.ownerUnitId, t.typeId, t.status),
     index("ix_asset_type").on(t.typeId),
     index("ix_asset_location").on(t.locationId),
@@ -141,4 +144,35 @@ export const workOrders = mysqlTable(
     index("ix_wo_status_due").on(t.status, t.dueDate),
     index("ix_wo_completed").on(t.completedAt),
   ],
+);
+
+// People who can sign in. A user has a local username/password, a CMU account (@cmu.ac.th), or both.
+export const users = mysqlTable(
+  "users",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    username: varchar("username", { length: 64 }), // NULL for CMU-only users (unique allows many NULLs)
+    passwordHash: varchar("password_hash", { length: 255 }), // NULL = cannot sign in with a password
+    cmuEmail: varchar("cmu_email", { length: 191 }), // lower-case, @cmu.ac.th
+    displayName: varchar("display_name", { length: 191 }).notNull(),
+    role: mysqlEnum("role", ROLES).notNull().default("viewer"),
+    unitId: int("unit_id"), // the unit (and its sub-units) this user may see; NULL = none (except super_admin)
+    active: int("active").notNull().default(1),
+    lastLoginAt: datetime("last_login_at", { mode: "date" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("uq_user_username").on(t.username), uniqueIndex("uq_user_cmu_email").on(t.cmuEmail), index("ix_user_unit").on(t.unitId)],
+);
+
+// Server-side sessions. `id` is the SHA-256 of the cookie token, so a leaked table cannot be replayed.
+export const sessions = mysqlTable(
+  "sessions",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    userId: int("user_id").notNull(),
+    method: varchar("method", { length: 8 }).notNull().default("local"), // how it was signed in: local | cmu
+    expiresAt: datetime("expires_at", { mode: "date" }).notNull(), // UTC
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("ix_session_user").on(t.userId), index("ix_session_expires").on(t.expiresAt)],
 );
