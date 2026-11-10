@@ -43,3 +43,6 @@ next-env.d.ts
 
 # server build output
 /dist
+
+# generated data exports (import by hand; never commit)
+/exports
