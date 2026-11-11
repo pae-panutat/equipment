@@ -137,7 +137,7 @@ export function AssetDetailView({ id }: { id: string }) {
               <button
                 type="button"
                 onClick={() => setEditingInfo(true)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 hover:bg-muted"
+                className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl border border-border px-3.5 hover:bg-muted"
               >
                 <Pencil className="size-4" aria-hidden="true" />
                 แก้ไขข้อมูล
@@ -172,7 +172,7 @@ export function AssetDetailView({ id }: { id: string }) {
           <button
             type="button"
             onClick={() => void saveQr(a.id, a.code)}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 hover:bg-muted print:hidden"
+            className="text-sm mt-4 inline-flex min-h-9 items-center gap-2 rounded-xl border border-border px-3.5 hover:bg-muted print:hidden"
           >
             <Download className="size-4" aria-hidden="true" />
             Save QR Code
@@ -187,7 +187,7 @@ export function AssetDetailView({ id }: { id: string }) {
             <button
               type="button"
               onClick={() => setPlanDialog({})}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 font-bold hover:bg-muted"
+              className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl border border-border px-3.5 font-bold hover:bg-muted"
             >
               <Plus className="size-5" aria-hidden="true" />
               เพิ่มแผน
@@ -214,7 +214,7 @@ export function AssetDetailView({ id }: { id: string }) {
                       <button
                         type="button"
                         onClick={() => setPlanDialog({ plan: p })}
-                        className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-primary hover:bg-primary-soft"
+                        className="text-sm inline-flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-primary hover:bg-primary-soft"
                         aria-label={`แก้ไขแผน ${p.title}`}
                       >
                         <Pencil className="size-4" aria-hidden="true" />
@@ -238,7 +238,7 @@ export function AssetDetailView({ id }: { id: string }) {
             <button
               type="button"
               onClick={() => setDialog({})}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90"
+              className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
             >
               <Plus className="size-5" aria-hidden="true" />
               บันทึกงานซ่อมบำรุง
@@ -299,7 +299,7 @@ export function AssetDetailView({ id }: { id: string }) {
                             onClick={() => setDialog({ id: w.id })}
                             aria-label={`แก้ไขหรือบันทึกผล ${w.number}`}
                             title="แก้ไข / บันทึกผล"
-                            className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                           >
                             <Pencil className="size-4" aria-hidden="true" />
                           </button>

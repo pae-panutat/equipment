@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Theme switch: the `dark` class on <html> (dark is the default, see layout.tsx). */
+/* Theme switch: the `dark` class on <html> (light is the default, see layout.tsx). */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* Design tokens: a vivid modern purple (with a violet-to-fuchsia gradient) as the main colour. Green/amber/red stay reserved for status. */

@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
 
 const field = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
-const btn = "min-h-11 rounded-xl px-4 font-bold disabled:opacity-50";
+const btn = "text-sm min-h-9 rounded-xl px-3.5 font-bold disabled:opacity-50";
 
 const TABS: { kind: MasterKind; label: string; noun: string; tree: boolean}[] = [
   { kind: "units", label: "ส่วนงาน", noun: "ส่วนงาน", tree: true },
@@ -67,7 +67,7 @@ export function MasterView() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">ข้อมูลหลัก</h1>
-        <button type="button" onClick={() => setDialog({ item: null })} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90">
+        <button type="button" onClick={() => setDialog({ item: null })} className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90">
           <Plus className="size-5" aria-hidden="true" />
           เพิ่ม{tab.noun}
         </button>
@@ -81,7 +81,7 @@ export function MasterView() {
             role="tab"
             aria-selected={t.kind === kind}
             onClick={() => (setKind(t.kind), setNote(null))}
-            className={`min-h-11 rounded-xl border px-4 font-bold ${t.kind === kind ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}
+            className={`text-sm min-h-9 rounded-xl border px-3.5 font-bold ${t.kind === kind ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}
           >
             {t.label}
           </button>
@@ -125,7 +125,7 @@ export function MasterView() {
                       onClick={() => setDialog({ item: r })}
                       aria-label={`แก้ไข ${r.name}`}
                       title="แก้ไข"
-                      className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <Pencil className="size-[18px]" aria-hidden="true" />
                     </button>
@@ -134,7 +134,7 @@ export function MasterView() {
                       onClick={() => setDeleting(r)}
                       aria-label={`ลบ ${r.name}`}
                       title="ลบ"
-                      className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
+                      className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
                     >
                       <Trash2 className="size-[18px]" aria-hidden="true" />
                     </button>
@@ -171,7 +171,7 @@ export function MasterView() {
                           onClick={() => setDialog({ item: r })}
                           aria-label={`แก้ไข ${r.name}`}
                           title="แก้ไข"
-                          className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                          className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <Pencil className="size-[18px]" aria-hidden="true" />
                         </button>
@@ -180,7 +180,7 @@ export function MasterView() {
                           onClick={() => setDeleting(r)}
                           aria-label={`ลบ ${r.name}`}
                           title="ลบ"
-                          className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
+                          className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
                         >
                           <Trash2 className="size-[18px]" aria-hidden="true" />
                         </button>

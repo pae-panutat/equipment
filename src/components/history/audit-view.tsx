@@ -50,13 +50,13 @@ export function AuditView() {
         </div>
         {data && data.total > PAGE && (
           <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
-            <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="min-h-11 rounded-xl border border-border px-4 hover:bg-muted disabled:opacity-40">
+            <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)} className="text-sm min-h-9 rounded-xl border border-border px-3.5 hover:bg-muted disabled:opacity-40">
               ก่อนหน้า
             </button>
             <span className="text-muted-foreground">
               หน้า {page} / {pages}
             </span>
-            <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)} className="min-h-11 rounded-xl border border-border px-4 hover:bg-muted disabled:opacity-40">
+            <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)} className="text-sm min-h-9 rounded-xl border border-border px-3.5 hover:bg-muted disabled:opacity-40">
               ถัดไป
             </button>
           </div>

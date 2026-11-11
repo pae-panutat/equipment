@@ -127,7 +127,7 @@ export function LoginForm() {
                 setError(ERRORS.cmu_disabled);
               }
             }}
-            className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90"
+            className="text-sm mt-5 flex min-h-9 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
           >
             <GraduationCap className="size-5" aria-hidden="true" />
             เข้าสู่ระบบด้วย CMU Account
@@ -154,7 +154,7 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={busy}
-              className="min-h-11 rounded-xl border border-primary px-4 font-bold text-primary enabled:hover:bg-primary-soft disabled:opacity-50"
+              className="text-sm min-h-9 rounded-xl border border-primary px-3.5 font-bold text-primary enabled:hover:bg-primary-soft disabled:opacity-50"
             >
               {busy ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
             </button>

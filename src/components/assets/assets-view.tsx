@@ -118,14 +118,14 @@ export function AssetsView() {
         </div>
         {canEdit && (
           <div className="flex flex-wrap gap-2">
-            <Link href="/assets/import" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 font-bold hover:bg-muted">
+            <Link href="/assets/import" className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl border border-border px-3.5 font-bold hover:bg-muted">
               <FileUp className="size-5" aria-hidden="true" />
               นำเข้าจากไฟล์
             </Link>
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90"
+              className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
             >
               <Plus className="size-5" aria-hidden="true" />
               เพิ่มอุปกรณ์
@@ -140,11 +140,11 @@ export function AssetsView() {
             เลือกแล้ว <b>{picked.size}</b> รายการ{picked.size > 200 && <span className="text-bad"> (พิมพ์ได้ครั้งละไม่เกิน 200)</span>}
           </span>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setPicked(new Set())} className="min-h-11 rounded-xl px-3 text-sm hover:bg-muted">
+            <button type="button" onClick={() => setPicked(new Set())} className="min-h-9 rounded-xl px-3 text-sm hover:bg-muted">
               ล้างที่เลือก
             </button>
             {picked.size <= 200 && (
-              <Link href={`/assets/labels?ids=${[...picked].join(",")}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90">
+              <Link href={`/assets/labels?ids=${[...picked].join(",")}`} className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90">
                 <Printer className="size-4" aria-hidden="true" />
                 พิมพ์ป้าย QR
               </Link>
@@ -162,7 +162,7 @@ export function AssetsView() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="ค้นหาด้วยรหัส ชื่อ ยี่ห้อ หรือรุ่น"
-            className="min-h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-[15px]"
+            className="min-h-9 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm"
           />
         </label>
         <FilterBar
@@ -211,7 +211,7 @@ export function AssetsView() {
               }}
               aria-label={dir === "asc" ? "เรียงจากน้อยไปมาก (กดเพื่อสลับ)" : "เรียงจากมากไปน้อย (กดเพื่อสลับ)"}
               title={dir === "asc" ? "น้อย → มาก" : "มาก → น้อย"}
-              className="grid size-11 shrink-0 place-items-center rounded-xl border border-border hover:bg-muted"
+              className="grid size-9 shrink-0 place-items-center rounded-xl border border-border hover:bg-muted"
             >
               {dir === "asc" ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
             </button>
@@ -223,8 +223,8 @@ export function AssetsView() {
                 <div className="flex items-start justify-between gap-3">
                   <input type="checkbox" className={`${tick} mt-0.5`} checked={picked.has(a.id)} onChange={() => toggle(a.id)} aria-label={`เลือก ${a.code} เพื่อพิมพ์ป้าย QR`} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-1">
-                      <AssetCodeLink id={a.id} code={a.code} className="font-bold text-primary underline-offset-2 hover:underline" />
+                    <div className="flex items-center gap-x-1">
+                      <AssetCodeLink id={a.id} code={a.code} className="min-w-0 break-all font-bold text-primary underline-offset-2 hover:underline" />
                       {canEdit && <OpenAsset id={a.id} code={a.code} />}
                       {fresh.has(a.id) && <NewBadge />}
                     </div>
@@ -409,7 +409,7 @@ function PageButton({ label, disabled, onClick, children }: { label: string; dis
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid size-11 place-items-center rounded-xl border border-border enabled:hover:bg-muted disabled:opacity-40"
+      className="grid size-9 place-items-center rounded-xl border border-border enabled:hover:bg-muted disabled:opacity-40"
     >
       {children}
     </button>

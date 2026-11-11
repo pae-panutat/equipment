@@ -3,22 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Boxes, Database, LayoutDashboard, LogOut, Menu, ScanQrCode, X, History, CalendarDays, FileBarChart } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, LogOut, Menu, MoreHorizontal, ScanQrCode, History, CalendarDays, FileBarChart } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
-import { CommandPalette } from "@/components/command-palette";
 import { RailTip } from "@/components/ui/rail-tip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar, UserIcon } from "@/components/ui/user-icon";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" }> };
+type NavItem = { href: string; label: string; short?: string; icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" }> };
 
 // The menu is split into groups separated by a divider; a group may have a small heading (shown when the sidebar is open).
 const MAIN: NavItem[] = [
   { href: "/", label: "ภาพรวม", icon: LayoutDashboard },
-  { href: "/assets", label: "ทะเบียนอุปกรณ์", icon: Boxes },
-  { href: "/calendar", label: "ปฏิทินบำรุงรักษา", icon: CalendarDays },
+  { href: "/assets", label: "ทะเบียนอุปกรณ์", short: "อุปกรณ์", icon: Boxes },
+  { href: "/calendar", label: "ปฏิทินบำรุงรักษา", short: "ปฏิทิน", icon: CalendarDays },
   { href: "/reports", label: "รายงาน", icon: FileBarChart },
 ];
 const ADMIN: NavItem[] = [
@@ -61,13 +60,70 @@ function NavLinks({ onNavigate, compact = false }: { onNavigate?: () => void; co
   );
 }
 
+/** Phone only: the menu sits at the bottom of the screen like a mobile app; the admin pages open from "เพิ่มเติม". */
+function BottomNav() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const [more, setMore] = useState(false);
+  useEffect(() => setMore(false), [pathname]);
+  const admin = user?.role === "super_admin";
+  const is = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const adminActive = ADMIN.some((i) => is(i.href));
+  const cell = "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] leading-tight transition-colors";
+  return (
+    <>
+      {more && admin && (
+        <div className="fixed inset-0 z-40 lg:hidden print:hidden" onClick={() => setMore(false)}>
+          <div
+            className="absolute inset-x-3 bottom-[calc(4rem+env(safe-area-inset-bottom))] grid gap-1 rounded-2xl border border-border bg-popover p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="px-3 pt-1 text-xs text-muted-foreground">ผู้ดูแลระบบ</p>
+            {ADMIN.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                aria-current={is(href) ? "page" : undefined}
+                className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm", is(href) ? "bg-primary-soft font-bold text-primary" : "hover:bg-muted")}
+              >
+                <Icon className="size-[18px]" aria-hidden="true" />
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      <nav aria-label="เมนูหลัก" className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden print:hidden">
+        <div className="mx-auto flex max-w-xl">
+          {MAIN.map(({ href, label, short, icon: Icon }) => (
+            <Link key={href} href={href} aria-current={is(href) ? "page" : undefined} aria-label={label} className={cn(cell, is(href) ? "font-bold text-primary" : "text-muted-foreground")}>
+              <span className={cn("grid h-7 w-12 place-items-center rounded-full transition-colors", is(href) && "bg-primary-soft")}>
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+              {short ?? label}
+            </Link>
+          ))}
+          {admin && (
+            <button type="button" onClick={() => setMore((v) => !v)} aria-expanded={more} aria-label="เมนูเพิ่มเติม" className={cn(cell, adminActive || more ? "font-bold text-primary" : "text-muted-foreground")}>
+              <span className={cn("grid h-7 w-12 place-items-center rounded-full transition-colors", (adminActive || more) && "bg-primary-soft")}>
+                <MoreHorizontal className="size-5" aria-hidden="true" />
+              </span>
+              เพิ่มเติม
+            </button>
+          )}
+        </div>
+      </nav>
+    </>
+  );
+}
+
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl brand-mark" aria-hidden="true">
         <ScanQrCode className="size-[18px]" />
       </span>
-      <span className="whitespace-nowrap leading-tight max-[420px]:hidden">
+      <span className="leading-tight">
         <span className="block text-[15px] font-bold">CMU Asset</span>
         <span className="block text-xs text-muted-foreground">Maintenance</span>
       </span>
@@ -76,7 +132,6 @@ function Brand() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false); // phone: the menu dropdown
   const [collapsed, setCollapsed] = useState(false); // desktop: the sidebar folded to a narrow icon rail
   const pathname = usePathname();
   useEffect(() => {
@@ -107,7 +162,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div role="alert" className="grid max-w-sm gap-3 text-center">
           <p className="text-lg font-bold">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</p>
           <p className="text-sm text-muted-foreground">{connectionError}</p>
-          <button type="button" onClick={retry} className="min-h-11 rounded-xl bg-primary px-4 font-bold text-primary-foreground">
+          <button type="button" onClick={retry} className="text-sm min-h-9 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground">
             ลองอีกครั้ง
           </button>
         </div>
@@ -149,27 +204,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={toggleSidebar}
             aria-label={collapsed ? "ขยายเมนูด้านข้าง" : "หุบเมนูด้านข้าง"}
             aria-expanded={!collapsed}
-            className="hidden size-11 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:-ml-2.5 lg:grid"
+            className="hidden size-9 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:-ml-2.5 lg:grid"
           >
             <Menu className="size-6" aria-hidden="true" />
-          </button>
-          {/* phone only: the sidebar is not there, so the same button opens the menu as a dropdown */}
-          <button
-            type="button"
-            className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted lg:hidden"
-            aria-label={open ? "ปิดเมนู" : "เปิดเมนู"}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X className="size-6" /> : <Menu className="size-6" />}
           </button>
           <div className="lg:hidden">
             <Brand />
           </div>
-          <div className="ml-auto">
-            <CommandPalette />
-          </div>
-          <div className="flex min-w-0 items-center gap-2.5" title={`${user.displayName} · ${ROLE_LABEL[user.role]}`}>
+          <div className="ml-auto flex min-w-0 items-center gap-2.5" title={`${user.displayName} · ${ROLE_LABEL[user.role]}`}>
             <div className="hidden min-w-0 text-right leading-tight sm:block">
               <p className="truncate text-sm font-bold">{user.displayName}</p>
               <p className="truncate text-xs text-muted-foreground">
@@ -186,21 +228,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => void logout()}
               aria-label="ออกจากระบบ"
               title="ออกจากระบบ"
-              className="grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="grid size-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <LogOut className="size-5" aria-hidden="true" />
             </button>
           </div>
         </header>
 
-        {open && (
-          <div className="border-b border-border bg-card p-3 lg:hidden print:hidden">
-            <NavLinks onNavigate={() => setOpen(false)} />
-          </div>
-        )}
-
         {/* the content fills all the room next to the sidebar, folded or not (centred only on very wide screens) */}
-        <main className="mx-auto w-full max-w-[1800px] px-4 py-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1800px] px-4 pb-24 pt-6 lg:px-8 lg:py-8 print:p-0">{children}</main>
+        <BottomNav />
       </div>
     </div>
   );

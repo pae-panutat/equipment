@@ -74,7 +74,7 @@ export function UsersView() {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90"
+          className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
         >
           <UserPlus className="size-5" aria-hidden="true" />
           เพิ่มผู้ใช้
@@ -114,7 +114,7 @@ export function UsersView() {
                         onClick={() => setStatusFor(u)}
                         aria-label={`สถานะของ ${u.displayName}: ${u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"} (กดเพื่อเปลี่ยน)`}
                         title={u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"}
-                        className={`grid size-11 place-items-center rounded-xl hover:bg-muted ${u.active ? "text-ok" : "text-bad"}`}
+                        className={`grid size-9 place-items-center rounded-xl hover:bg-muted ${u.active ? "text-ok" : "text-bad"}`}
                       >
                         {u.active ? <UserCheck className="size-5" aria-hidden="true" /> : <UserX className="size-5" aria-hidden="true" />}
                       </button>
@@ -124,12 +124,12 @@ export function UsersView() {
                           onClick={() => setDeleting(u)}
                           aria-label={`ลบผู้ใช้ ${u.displayName}`}
                           title="ลบผู้ใช้"
-                          className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
+                          className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
                         >
                           <Trash2 className="size-[18px]" aria-hidden="true" />
                         </button>
                       ) : (
-                        <span className="size-11" aria-hidden="true" /> // keeps the status icon in the same place on every card
+                        <span className="size-9" aria-hidden="true" /> // keeps the status icon in the same place on every card
                       )}
                     </div>
                   </div>
@@ -164,7 +164,7 @@ export function UsersView() {
                   <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
                     <div className="text-sm text-muted-foreground">เข้าล่าสุด {u.lastLoginAt ? formatDate(u.lastLoginAt.slice(0, 10)) : "ยังไม่เคย"}</div>
                     {u.username && (
-                      <button type="button" onClick={() => setResetting(u)} className="min-h-11 shrink-0 rounded-xl border border-border px-3 text-sm text-muted-foreground hover:bg-muted">
+                      <button type="button" onClick={() => setResetting(u)} className="min-h-9 shrink-0 rounded-xl border border-border px-3 text-sm text-muted-foreground hover:bg-muted">
                         ตั้งรหัสผ่านใหม่
                       </button>
                     )}
@@ -224,12 +224,12 @@ export function UsersView() {
                             onClick={() => setStatusFor(u)}
                             aria-label={`สถานะของ ${u.displayName}: ${u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"} (กดเพื่อเปลี่ยน)`}
                             title={u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"}
-                            className={`grid size-11 place-items-center rounded-xl hover:bg-muted ${u.active ? "text-ok" : "text-bad"}`}
+                            className={`grid size-9 place-items-center rounded-xl hover:bg-muted ${u.active ? "text-ok" : "text-bad"}`}
                           >
                             {u.active ? <UserCheck className="size-5" aria-hidden="true" /> : <UserX className="size-5" aria-hidden="true" />}
                           </button>
                           {u.username && (
-                            <button type="button" onClick={() => setResetting(u)} className="min-h-11 rounded-xl border border-border px-3 text-muted-foreground hover:bg-muted">
+                            <button type="button" onClick={() => setResetting(u)} className="text-sm min-h-9 rounded-xl border border-border px-3 text-muted-foreground hover:bg-muted">
                               ตั้งรหัสผ่านใหม่
                             </button>
                           )}
@@ -239,7 +239,7 @@ export function UsersView() {
                               onClick={() => setDeleting(u)}
                               aria-label={`ลบผู้ใช้ ${u.displayName}`}
                               title="ลบผู้ใช้"
-                              className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
+                              className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
                             >
                               <Trash2 className="size-[18px]" aria-hidden="true" />
                             </button>
@@ -264,10 +264,10 @@ export function UsersView() {
             </p>
             <p className="text-sm text-muted-foreground">ลบบัญชีนี้ออกจากระบบ ส่วนงานซ่อมบำรุง รูป และข้อมูลที่ผู้ใช้เคยบันทึกจะไม่ถูกลบ (แค่ไม่แสดงชื่อผู้บันทึก)</p>
             <div className="flex justify-end gap-3 border-t border-border pt-3">
-              <button type="button" data-autofocus onClick={() => setDeleting(null)} className="min-h-11 rounded-xl border border-border px-4 font-bold hover:bg-muted">
+              <button type="button" data-autofocus onClick={() => setDeleting(null)} className="text-sm min-h-9 rounded-xl border border-border px-3.5 font-bold hover:bg-muted">
                 ยกเลิก
               </button>
-              <button type="button" onClick={() => void remove(deleting)} className="min-h-11 rounded-xl bg-bad px-4 font-bold text-white">
+              <button type="button" onClick={() => void remove(deleting)} className="text-sm min-h-9 rounded-xl bg-bad px-3.5 font-bold text-white">
                 ลบถาวร
               </button>
             </div>
@@ -410,10 +410,10 @@ function CreateUserDialog({ units, onClose }: { units: { id: number; label: stri
           </p>
         )}
         <div className="flex justify-end gap-3 sm:col-span-2">
-          <button type="button" disabled={busy} onClick={() => onClose(null)} className="min-h-11 rounded-xl border border-border px-4 font-bold hover:bg-muted disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => onClose(null)} className="text-sm min-h-9 rounded-xl border border-border px-3.5 font-bold hover:bg-muted disabled:opacity-50">
             ยกเลิก
           </button>
-          <button type="submit" disabled={busy} className="min-h-11 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">
+          <button type="submit" disabled={busy} className="text-sm min-h-9 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground disabled:opacity-50">
             {busy ? "กำลังบันทึก..." : "เพิ่มผู้ใช้"}
           </button>
         </div>
@@ -469,10 +469,10 @@ function ResetPasswordDialog({ user, onClose }: { user: ManagedUser; onClose: (d
           </p>
         )}
         <div className="flex justify-end gap-3">
-          <button type="button" disabled={busy} onClick={() => onClose(false)} className="min-h-11 rounded-xl border border-border px-4 font-bold hover:bg-muted disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => onClose(false)} className="text-sm min-h-9 rounded-xl border border-border px-3.5 font-bold hover:bg-muted disabled:opacity-50">
             ยกเลิก
           </button>
-          <button type="submit" disabled={busy} className="min-h-11 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50">
+          <button type="submit" disabled={busy} className="text-sm min-h-9 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground disabled:opacity-50">
             {busy ? "กำลังบันทึก..." : "เปลี่ยนรหัสผ่าน"}
           </button>
         </div>

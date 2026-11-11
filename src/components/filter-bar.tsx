@@ -70,7 +70,7 @@ export function FilterBar({
           type="button"
           disabled={!dirty}
           onClick={() => onChange(EMPTY_FILTERS)}
-          className="min-h-11 w-full rounded-xl border border-border px-4 text-[15px] text-muted-foreground enabled:hover:bg-muted disabled:opacity-40"
+          className="min-h-9 w-full rounded-xl border border-border px-3.5 text-sm text-muted-foreground enabled:hover:bg-muted disabled:opacity-40"
         >
           ล้างตัวกรอง
         </button>

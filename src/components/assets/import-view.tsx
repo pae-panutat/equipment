@@ -32,7 +32,7 @@ type Row = Record<Key, string>;
 type Result = { row: number; ok: boolean; code?: string; error?: string };
 type Outcome = { dryRun: boolean; imported: number; errors: number; results: Result[] };
 
-const btn = "inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold disabled:opacity-50";
+const btn = "text-sm inline-flex min-h-9 items-center gap-2 rounded-xl px-3.5 font-bold disabled:opacity-50";
 
 /** Add many assets from a CSV file (a spreadsheet saved as CSV). Checked first; nothing is saved until every row is fine. */
 export function ImportView() {

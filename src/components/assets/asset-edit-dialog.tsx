@@ -37,7 +37,7 @@ const FIELDS: FieldDef[] = [
 ];
 
 const input = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
-const btn = "min-h-11 rounded-xl px-4 font-bold disabled:opacity-50";
+const btn = "text-sm min-h-9 rounded-xl px-3.5 font-bold disabled:opacity-50";
 
 function initialValues(a: AssetDetail): Values {
   return {

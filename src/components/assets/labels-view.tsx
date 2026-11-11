@@ -50,7 +50,7 @@ export function LabelsView() {
             type="button"
             onClick={() => window.print()}
             disabled={!data || data.items.length === 0}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground disabled:opacity-50"
+            className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground disabled:opacity-50"
           >
             <Printer className="size-4" aria-hidden="true" /> พิมพ์ / บันทึกเป็น PDF
           </button>

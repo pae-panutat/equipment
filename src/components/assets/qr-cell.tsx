@@ -75,7 +75,7 @@ export function QrCell({ asset }: { asset: Asset }) {
     }
   }
 
-  const btn = "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-sm hover:bg-muted";
+  const btn = "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-sm hover:bg-muted";
 
   return (
     <>
@@ -89,7 +89,7 @@ export function QrCell({ asset }: { asset: Asset }) {
         onMouseLeave={closeSoon}
         onFocus={open}
         onClick={() => (pos ? close() : open())}
-        className="grid size-11 place-items-center rounded-lg"
+        className="grid size-9 place-items-center rounded-lg"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={qrSvgUrl(asset.id)} alt="" width={40} height={40} className="size-10 rounded bg-white" />

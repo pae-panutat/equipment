@@ -23,7 +23,7 @@ const back = (ym: string, n: number) => {
   return d.toISOString().slice(0, 7);
 };
 const input = "min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
-const btn = "inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold disabled:opacity-50";
+const btn = "text-sm inline-flex min-h-9 items-center gap-2 rounded-xl px-3.5 font-bold disabled:opacity-50";
 
 export function ReportsView() {
   const [from, setFrom] = useState(back(thisMonth(), 11));

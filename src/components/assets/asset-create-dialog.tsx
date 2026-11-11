@@ -17,7 +17,7 @@ type V = {
 type Key = keyof V;
 
 const input = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
-const btn = "min-h-11 rounded-xl px-4 font-bold disabled:opacity-50";
+const btn = "text-sm min-h-9 rounded-xl px-3.5 font-bold disabled:opacity-50";
 const CODE_RULE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/;
 
 // "In progress" is not offered: that status is set by the system when a job is in progress. "Disposed" makes no sense for a new asset.

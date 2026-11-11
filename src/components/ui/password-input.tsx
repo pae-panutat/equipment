@@ -15,7 +15,7 @@ export function PasswordInput({
       <input
         {...props}
         type={visible ? "text" : "password"}
-        className={cn("min-h-11 w-full rounded-xl border border-border bg-card pl-3 pr-12 text-[15px] text-foreground", className)}
+        className={cn("min-h-9 w-full rounded-xl border border-border bg-card pl-3 pr-12 text-sm text-foreground", className)}
       />
       <button
         type="button"

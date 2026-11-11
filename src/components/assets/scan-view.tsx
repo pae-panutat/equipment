@@ -41,7 +41,7 @@ export function ScanView({ token }: { token: string }) {
     <Card className="mx-auto mt-10 max-w-md text-center">
       <h1 className="text-xl font-bold">{error.status === 403 ? "ไม่มีสิทธิ์ดูอุปกรณ์นี้" : error.status === 404 ? "ไม่พบอุปกรณ์" : "เปิดข้อมูลไม่สำเร็จ"}</h1>
       <p className="mt-2 text-muted-foreground">{error.message}</p>
-      <Link href="/assets" className="mt-5 inline-flex min-h-11 items-center rounded-xl border border-border px-4 hover:bg-muted">
+      <Link href="/assets" className="text-sm mt-5 inline-flex min-h-9 items-center rounded-xl border border-border px-3.5 hover:bg-muted">
         ไปที่ทะเบียนอุปกรณ์
       </Link>
     </Card>

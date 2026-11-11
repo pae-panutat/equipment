@@ -46,7 +46,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
       <p className="font-bold">โหลดข้อมูลไม่สำเร็จ</p>
       <p className="text-sm">{message}</p>
       {onRetry && (
-        <button type="button" onClick={onRetry} className="min-h-11 rounded-xl bg-bad px-4 text-sm font-bold text-white">
+        <button type="button" onClick={onRetry} className="min-h-9 rounded-xl bg-bad px-3.5 text-sm font-bold text-white">
           ลองอีกครั้ง
         </button>
       )}

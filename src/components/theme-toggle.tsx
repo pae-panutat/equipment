@@ -5,9 +5,9 @@ import { Moon, Sun } from "lucide-react";
 
 const KEY = "theme";
 
-/** Dark is the default; the choice is remembered in this browser only. */
+/** Light is the default; the choice is remembered in this browser only. */
 export function ThemeToggle() {
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
     setDark(document.documentElement.classList.contains("dark"));
@@ -31,7 +31,7 @@ export function ThemeToggle() {
       aria-pressed={dark}
       aria-label={dark ? "สลับเป็นธีมสว่าง" : "สลับเป็นธีมมืด"}
       title={dark ? "ธีมสว่าง" : "ธีมมืด"}
-      className="grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      className="grid size-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
     >
       {dark ? <Sun className="size-5" aria-hidden="true" /> : <Moon className="size-5" aria-hidden="true" />}
     </button>

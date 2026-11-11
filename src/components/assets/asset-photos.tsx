@@ -9,7 +9,7 @@ import { apiSend } from "@/lib/api";
 import { PHOTO_ACCEPT, prepareImage } from "@/lib/image-resize";
 
 const src = (assetId: number, imageId: number) => `${API_PREFIX}/assets/${assetId}/images/${imageId}`;
-const btn = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 hover:bg-muted disabled:opacity-50";
+const btn = "text-sm inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-border px-3.5 hover:bg-muted disabled:opacity-50";
 
 /**
  * The photo of an asset (one photo, at most 1 MB, JPG/JPEG/PNG). Everyone who can see the asset can look at it;
@@ -122,7 +122,7 @@ export function AssetPhotos({ assetId, images, canEdit, onChanged }: { assetId: 
               <button type="button" data-autofocus disabled={working !== null} onClick={() => setConfirmDelete(false)} className={btn}>
                 ยกเลิก
               </button>
-              <button type="button" disabled={working !== null} onClick={() => void remove()} className="min-h-11 rounded-xl bg-bad px-4 font-bold text-white disabled:opacity-50">
+              <button type="button" disabled={working !== null} onClick={() => void remove()} className="text-sm min-h-9 rounded-xl bg-bad px-3.5 font-bold text-white disabled:opacity-50">
                 {working ? "กำลังลบ..." : "ลบถาวร"}
               </button>
             </div>

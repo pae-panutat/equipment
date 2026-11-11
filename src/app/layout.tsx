@@ -24,14 +24,14 @@ export const metadata: Metadata = {
   description: "ระบบทะเบียนอุปกรณ์และติดตามการบำรุงรักษา",
 };
 
-export const viewport: Viewport = { themeColor: "#7c3aed" };
+export const viewport: Viewport = { themeColor: "#7c3aed", viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="th" className={`${lineSeed.variable} dark`} suppressHydrationWarning>
+    <html lang="th" className={lineSeed.variable} suppressHydrationWarning>
       <head>
-        {/* dark is the default; only an explicit saved "light" choice removes it (runs before paint, no flash) */}
-        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")==="light")document.documentElement.classList.remove("dark")}catch(e){}` }} />
+        {/* light is the default; only an explicit saved "dark" choice turns dark on (runs before paint, no flash) */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}` }} />
       </head>
       <body>
         <Pwa />
