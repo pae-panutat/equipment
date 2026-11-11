@@ -61,6 +61,32 @@ function parse<T extends z.ZodTypeAny>(schema: T, input: unknown, res: Response)
   return r.data;
 }
 
+// A short token that changes whenever an asset or a job the user may see is added or changed. The browser polls it and
+// reloads quietly when it changes (live updates). Cached for a few seconds per scope so many open tabs cost one query.
+const pulseCache = new Map<string, { at: number; token: Promise<string> }>();
+dataRouter.get("/pulse", async (req, res) => {
+  const user = req.user!;
+  const scopeKey = user.seesAllUnits ? "all" : `unit:${user.unitId ?? "none"}`;
+  let hit = pulseCache.get(scopeKey);
+  if (!hit || Date.now() - hit.at > 3000) {
+    const where = await assetScope({}, user);
+    const token = (async () => {
+      const [a] = await rows<{ n: number; id: number; t: number }>(
+        sql`SELECT COUNT(*) AS n, COALESCE(MAX(a.id), 0) AS id, COALESCE(UNIX_TIMESTAMP(MAX(a.updated_at)), 0) AS t FROM assets a WHERE ${where}`,
+      );
+      const [w] = await rows<{ n: number; id: number; t: number; done: number }>(sql`
+        SELECT COUNT(*) AS n, COALESCE(MAX(w.id), 0) AS id, COALESCE(UNIX_TIMESTAMP(MAX(COALESCE(w.completed_at, w.created_at))), 0) AS t,
+               COALESCE(SUM(w.status = 'done'), 0) AS done
+        FROM work_orders w JOIN assets a ON a.id = w.asset_id WHERE ${where}`);
+      return `${a.n}.${a.id}.${a.t}|${w.n}.${w.id}.${w.t}.${w.done}`;
+    })();
+    hit = { at: Date.now(), token };
+    pulseCache.set(scopeKey, hit);
+    token.catch(() => pulseCache.delete(scopeKey)); // never keep a failed query
+  }
+  res.json({ token: await hit.token });
+});
+
 dataRouter.get("/meta/filters", async (req, res) => {
   const all = await rows<{ id: number; name: string; parent_id: number | null }>(
     sql`SELECT id, name, parent_id FROM organization_units WHERE archived_at IS NULL ORDER BY name`,
@@ -109,13 +135,6 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     SELECT COUNT(*) AS n FROM assets a
     WHERE a.status <> 'disposed' AND ${where}
       AND NOT EXISTS (SELECT 1 FROM maintenance_plans p WHERE p.asset_id = a.id AND p.active = 1)`);
-  const q_cost = rows<{ total: string | null; with_cost: number; unknown: number }>(sql`
-    SELECT
-      SUM(COALESCE(w.labor_cost,0) + COALESCE(w.parts_cost,0) + COALESCE(w.other_cost,0)) AS total,
-      SUM(w.labor_cost IS NOT NULL OR w.parts_cost IS NOT NULL OR w.other_cost IS NOT NULL) AS with_cost,
-      SUM(w.labor_cost IS NULL AND w.parts_cost IS NULL AND w.other_cost IS NULL) AS unknown
-    FROM work_orders w JOIN assets a ON a.id = w.asset_id
-    WHERE w.status = 'done' AND w.performed_on BETWEEN ${from} AND ${to} AND ${where}`);
   const q_monthly = rows<{ month: string; count: number }>(sql`
     SELECT DATE_FORMAT(w.performed_on, '%Y-%m') AS month, COUNT(*) AS count
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
@@ -133,8 +152,8 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     WHERE ${where} ORDER BY COALESCE(w.completed_at, w.created_at) DESC, w.id DESC LIMIT 8`);
 
   // independent queries: send them together instead of one after another
-  const all = await Promise.all([q_totals, q_acType, q_byType, q_byStatus, q_maint, q_noPlan, q_cost, q_monthly, q_upcoming, q_recent]);
-  const [[totals], [acType], byType, byStatus, [maint], [noPlan], [cost], monthly, upcoming, recent] = all;
+  const all = await Promise.all([q_totals, q_acType, q_byType, q_byStatus, q_maint, q_noPlan, q_monthly, q_upcoming, q_recent]);
+  const [[totals], [acType], byType, byStatus, [maint], [noPlan], monthly, upcoming, recent] = all;
   // every month in the range, including months with no completed jobs
   const counts = new Map(monthly.map((m) => [m.month, Number(m.count)]));
   const completedByMonth: DashboardSummary["completedByMonth"] = [];
@@ -149,7 +168,6 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     byType: byType.map((t) => ({ ...t, count: Number(t.count) })),
     byStatus: byStatus.map((s) => ({ ...s, count: Number(s.count) })),
     maintenance: { overdue: Number(maint?.overdue ?? 0), dueSoon: Number(maint?.due_soon ?? 0), noPlan: Number(noPlan?.n ?? 0) },
-    cost: { total: Number(cost?.total ?? 0), ordersWithCost: Number(cost?.with_cost ?? 0), ordersWithUnknownCost: Number(cost?.unknown ?? 0) },
     completedByMonth,
     upcoming: upcoming.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, title: u.title, dueDate: u.due, overdue: u.due < today })),
     recent: recent.map((r) => ({ id: r.id, number: r.number, assetId: r.asset_id, assetCode: r.code, assetName: r.name, title: r.title, kind: r.kind, status: r.status, at: r.at })),
@@ -226,10 +244,10 @@ dataRouter.get("/assets/:id", async (req, res) => {
   const orders = await rows<{
     id: number; number: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; priority: Priority; description: string | null;
     plan_id: number | null; due_date: string | null; performed_on: string | null;
-    labor_cost: string | null; parts_cost: string | null; other_cost: string | null; recorded_by: string | null;
+    recorded_by: string | null;
   }>(sql`
     SELECT w.id, w.number, w.title, w.kind, w.status, w.priority, w.description, w.plan_id, w.due_date, w.performed_on,
-           w.labor_cost, w.parts_cost, w.other_cost, u.display_name AS recorded_by
+           u.display_name AS recorded_by
     FROM work_orders w LEFT JOIN users u ON u.id = w.created_by
     WHERE w.asset_id = ${id.data}
       AND (w.status = 'in_progress'
@@ -252,8 +270,7 @@ dataRouter.get("/assets/:id", async (req, res) => {
     workOrders: orders.map((o) => ({
       id: o.id, number: o.number, title: o.title, kind: o.kind, status: o.status, priority: o.priority, description: o.description,
       planId: o.plan_id, dueDate: o.due_date, performedOn: o.performed_on,
-      laborCost: o.labor_cost === null ? null : Number(o.labor_cost), partsCost: o.parts_cost === null ? null : Number(o.parts_cost),
-      otherCost: o.other_cost === null ? null : Number(o.other_cost), recordedBy: o.recorded_by,
+      recordedBy: o.recorded_by,
       version: workOrderVersion(o),
     })),
   };

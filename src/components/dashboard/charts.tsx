@@ -16,7 +16,7 @@ function usePrefersReducedMotion() {
 }
 
 /** Number that eases up to its value once (no motion when the user prefers reduced motion). */
-export function CountUp({ value, format = formatNumber }: { value: number; format?: (n: number) => string }) {
+export function CountUp({ value }: { value: number }) {
   const reduce = usePrefersReducedMotion();
   const [shown, setShown] = useState(value);
   const from = useRef(value);
@@ -39,7 +39,7 @@ export function CountUp({ value, format = formatNumber }: { value: number; forma
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [value, reduce]);
-  return <>{format(Math.round(shown))}</>;
+  return <>{formatNumber(Math.round(shown))}</>;
 }
 
 /** A single bar split into segments (e.g. asset status), with a legend that carries the numbers. */

@@ -37,11 +37,12 @@ async function toError(res: Response): Promise<ApiError> {
 }
 
 /** GET a JSON endpoint. Errors are thrown (never turned into empty/zero data). */
-export async function apiGet<T>(path: string, params?: Record<string, string | number | null | undefined>, signal?: AbortSignal): Promise<T> {
+export async function apiGet<T>(path: string, params?: Record<string, string | number | null | undefined>, signal?: AbortSignal, quiet = false): Promise<T> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params ?? {})) if (v !== null && v !== undefined && v !== "") qs.set(k, String(v));
   const query = qs.toString(); // (not qs.size: that is missing in browsers older than Chrome 113 / Safari 17)
-  const res = await track(fetch(`${API_PREFIX}${path}${query ? `?${query}` : ""}`, { signal, headers: { Accept: "application/json" } }));
+  const request = fetch(`${API_PREFIX}${path}${query ? `?${query}` : ""}`, { signal, headers: { Accept: "application/json" } });
+  const res = await (quiet ? request : track(request)); // a quiet (live) refresh does not light up the loading bar
   if (!res.ok) {
     if (res.status === 401 && path !== "/auth/me" && typeof window !== "undefined") window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     throw await toError(res);

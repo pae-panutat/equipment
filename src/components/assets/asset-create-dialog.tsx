@@ -5,7 +5,8 @@ import { ASSET_STATUS_LABEL, type AssetStatus, type FilterOptions, type Location
 import { Modal } from "@/components/ui/modal";
 import { unitOptions } from "@/lib/unit-options";
 import { Skeleton } from "@/components/ui/card";
-import { apiGet, apiSend } from "@/lib/api";
+import { ApiError, apiGet, apiSend } from "@/lib/api";
+import { focusField } from "@/lib/focus-field";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 
@@ -117,10 +118,14 @@ function Form({
 
   function review(e: React.FormEvent) {
     e.preventDefault();
-    if (!CODE_RULE.test(v.code.trim())) return setError("รหัสอุปกรณ์ใช้ได้เฉพาะ A-Z a-z 0-9 . _ - ยาวไม่เกิน 40 ตัว และต้องขึ้นต้นด้วยตัวอักษรหรือตัวเลข");
-    if (!v.name.trim()) return setError("กรุณากรอกชื่ออุปกรณ์");
-    if (!v.typeId) return setError("กรุณาเลือกประเภทอุปกรณ์");
-    if (!v.ownerUnitId) return setError("กรุณาเลือกส่วนงานเจ้าของอุปกรณ์");
+    const refuse = (message: string, key: Key) => {
+      setError(message); // and take the person to the field that needs fixing
+      focusField(key);
+    };
+    if (!CODE_RULE.test(v.code.trim())) return refuse("รหัสอุปกรณ์ใช้ได้เฉพาะ A-Z a-z 0-9 . _ - ยาวไม่เกิน 40 ตัว และต้องขึ้นต้นด้วยตัวอักษรหรือตัวเลข", "code");
+    if (!v.name.trim()) return refuse("กรุณากรอกชื่ออุปกรณ์", "name");
+    if (!v.typeId) return refuse("กรุณาเลือกประเภทอุปกรณ์", "typeId");
+    if (!v.ownerUnitId) return refuse("กรุณาเลือกส่วนงานเจ้าของอุปกรณ์", "ownerUnitId");
     setError(null);
     setStep("confirm");
   }
@@ -141,6 +146,7 @@ function Form({
     } catch (e) {
       setError(e instanceof Error ? e.message : "เพิ่มอุปกรณ์ไม่สำเร็จ");
       setStep("edit"); // e.g. the code is already taken: go back to the form so it can be changed
+      if (e instanceof ApiError && e.status === 409) focusField("code");
       setSaving(false);
     }
   }
@@ -187,12 +193,11 @@ function Form({
     );
   }
 
-  const field = (k: Key, control: React.ReactNode, opts: { wide?: boolean; hint?: string; required?: boolean } = {}) => (
-    <label className={`grid gap-1 text-[13px] text-muted-foreground ${opts.wide ? "sm:col-span-2" : ""}`}>
+  const field = (k: Key, control: React.ReactNode, opts: { wide?: boolean; required?: boolean } = {}) => (
+    <label data-field={k} className={`grid gap-1 text-[13px] text-muted-foreground ${opts.wide ? "sm:col-span-2" : ""}`}>
       {LABEL[k]}
       {opts.required ? " *" : ""}
       {control}
-      {opts.hint && <span className="text-xs">{opts.hint}</span>}
     </label>
   );
   const text = (k: Key, max: number, o: { type?: string; autoFocus?: boolean; placeholder?: string } = {}) => (
@@ -214,7 +219,7 @@ function Form({
             {unitOpts.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
           </select>
         ), { required: true })}
-        {field("code", text("code", 40, { placeholder: "เช่น AC-ENG-001" }), { wide: true, required: true, hint: "ระบบเสนอรหัสให้เมื่อเลือกประเภทและส่วนงาน แก้เองได้ (A-Z a-z 0-9 . _ - ไม่ซ้ำกับอุปกรณ์อื่น) และแก้ภายหลังไม่ได้" })}
+        {field("code", text("code", 40, { placeholder: "เช่น AC-ENG-001" }), { wide: true, required: true })}
         {field("name", text("name", 191, { placeholder: "เช่น เครื่องปรับอากาศ Daikin ห้อง 301" }), { wide: true, required: true })}
         {field("status", (
           <select className={input} value={v.status} onChange={(e) => set("status", e.target.value)}>

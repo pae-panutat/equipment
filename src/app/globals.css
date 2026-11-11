@@ -3,51 +3,57 @@
 /* Theme switch: the `dark` class on <html> (dark is the default, see layout.tsx). */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Design tokens. Purple is the main accent; green/amber/red are reserved for status. */
+/* Design tokens: a vivid modern purple (with a violet-to-fuchsia gradient) as the main colour. Green/amber/red stay reserved for status. */
 :root {
   color-scheme: light;
-  --background: #f7f6fb;
-  --foreground: #1c1733;
+  --background: #faf8ff;
+  --foreground: #1b1033;
   --card: #ffffff;
-  --card-foreground: #1c1733;
+  --card-foreground: #1b1033;
   --popover: #ffffff;
-  --popover-foreground: #1c1733;
-  --muted: #f0eef7;
-  --muted-foreground: #5f5978;
-  --border: #e4e0ef;
-  --primary: #6a3df0;
-  --primary-soft: #ece6ff;
+  --popover-foreground: #1b1033;
+  --muted: #f3eefe;
+  --muted-foreground: #5e5478;
+  --border: #e7defa;
+  --primary: #7c3aed;
+  --primary-soft: #f0e8ff;
   --primary-foreground: #ffffff;
-  --ring: #8b6cf6;
+  --gold: #d946ef;
+  --grad: linear-gradient(135deg, #6d28d9 0%, #8b3dff 50%, #c026d3 100%);
+  --ring: #8b5cf6;
   --ok: #15803d;
   --ok-soft: #dcfce7;
   --warn: #b45309;
   --warn-soft: #fef3c7;
   --bad: #b91c1c;
   --bad-soft: #fee2e2;
+  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%237c3aed'%20stroke-opacity%3D'0.09'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
 }
 
 .dark {
   color-scheme: dark;
-  --background: #0b0a12;
-  --foreground: #f3f1ff;
-  --card: #141220;
-  --card-foreground: #f3f1ff;
-  --popover: #1b1830;
-  --popover-foreground: #f3f1ff;
-  --muted: #1d1a2e;
-  --muted-foreground: #a8a2c0;
-  --border: #2a2644;
-  --primary: #8e72ff;
-  --primary-soft: #2a2158;
-  --primary-foreground: #ffffff;
-  --ring: #8e72ff;
+  --background: #0c0716;
+  --foreground: #f6f1ff;
+  --card: #160d27;
+  --card-foreground: #f6f1ff;
+  --popover: #20133a;
+  --popover-foreground: #f6f1ff;
+  --muted: #21153a;
+  --muted-foreground: #b4a7cc;
+  --border: #35235a;
+  --primary: #a97bff;
+  --primary-soft: #321e63;
+  --primary-foreground: #12062a;
+  --gold: #e879f9;
+  --grad: linear-gradient(135deg, #8b5cf6 0%, #b07cff 50%, #f0abfc 110%);
+  --ring: #a97bff;
   --ok: #4ade80;
   --ok-soft: #12301f;
   --warn: #fbbf24;
   --warn-soft: #382a0a;
   --bad: #f87171;
   --bad-soft: #3b1414;
+  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%23c4a5ff'%20stroke-opacity%3D'0.08'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
 }
 
 /* Tighter line spacing site-wide (Tailwind defaults are 1.43-1.5 for text-sm/base). Kept above 1.2 so Thai tone marks and vowels never clip. */
@@ -75,6 +81,7 @@
   --color-primary: var(--primary);
   --color-primary-soft: var(--primary-soft);
   --color-primary-foreground: var(--primary-foreground);
+  --color-gold: var(--gold);
   --color-ring: var(--ring);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
@@ -159,3 +166,59 @@ summary {
 @media (prefers-reduced-motion: reduce) {
   .railfade { animation: none; }
 }
+
+/* A row that just arrived through a live update blinks three times (tinted, then back to its own colour). */
+@keyframes freshflash {
+  25%, 75% { background-color: color-mix(in oklab, var(--primary) 32%, transparent); }
+  50% { background-color: color-mix(in oklab, var(--primary) 10%, transparent); }
+}
+.fresh { animation: freshflash 1.3s ease-in-out 3; }
+@media (prefers-reduced-motion: reduce) {
+  .fresh { animation: none; background-color: color-mix(in oklab, var(--primary) 18%, transparent); }
+}
+
+/* A field the form sent the person back to (see focus-field.ts) */
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--bad) 28%, transparent);
+}
+
+/* Login page: a drifting aurora, a faint grid and a glowing card. */
+.login-bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.login-bg::before { content: ""; position: absolute; inset: 0; background-image: var(--geo); background-size: 69.282px 120px; mask-image: radial-gradient(520px 400px at 100% 0%, #000, transparent 100%), radial-gradient(420px 320px at 0% 100%, #000, transparent 100%); }
+.login-blob { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: 0.28; animation: loginfloat 20s ease-in-out infinite alternate; }
+.dark .login-blob { opacity: 0.42; }
+@keyframes loginfloat {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(60px, 40px, 0) scale(1.18); }
+}
+.login-title { background: linear-gradient(100deg, var(--foreground) 10%, var(--primary) 55%, var(--gold) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.login-card { box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent), 0 30px 80px -24px color-mix(in oklab, var(--primary) 60%, transparent); }
+@media (prefers-reduced-motion: reduce) { .login-blob { animation: none; } }
+
+/* The page behind the cards: two soft gradient glows, plus a very faint isometric cube lattice that only shows in two corners. */
+body {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 70%),
+    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, var(--gold) 14%, transparent), transparent 70%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+.dark body {
+  background-image:
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, #7c3aed 50%, transparent), transparent 70%),
+    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, #c026d3 32%, transparent), transparent 70%);
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image: var(--geo); background-size: 69.282px 120px;
+  mask-image: radial-gradient(520px 380px at 100% 0%, #000, transparent 100%), radial-gradient(420px 320px at 0% 100%, #000, transparent 100%);
+}
+/* Anything filled with the main colour (buttons, badges, tags) gets the gradient. */
+.bg-primary { background-image: var(--grad); }
+/* A thin purple-to-fuchsia line under the top bar. */
+.brand-line { position: relative; }
+.brand-line::after { content: ""; position: absolute; inset: auto 0 -1px 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--gold) 55%, transparent); }
+/* The logo tile: always the vivid purple gradient, whatever the theme. */
+.brand-mark { background: linear-gradient(135deg, #6d28d9 0%, #8b3dff 50%, #d946ef 100%); color: #fff; }

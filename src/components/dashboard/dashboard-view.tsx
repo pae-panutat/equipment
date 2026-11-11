@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ArrowRight, ChevronRight, TriangleAlert } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { canEditAssets } from "@shared/index";
 import {
   ASSET_STATUSES,
@@ -18,12 +18,15 @@ import { Card, CardTitle, EmptyState, ErrorState, Skeleton, Stat } from "@/compo
 import { formatDate, formatDateTime, formatMonth, formatNumber } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
+import { useFresh } from "@/lib/use-fresh";
+import { NewBadge } from "@/components/ui/new-badge";
 import { CountUp, SegmentBar } from "./charts";
 import { LineChart, Tooltip, Treemap, useTip, type TreeItem } from "./bento";
 
 export function DashboardView() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const { data, error, loading, reload } = useApi<DashboardSummary>("/dashboard/summary", filters);
+  const { data, error, loading, reload, liveTick } = useApi<DashboardSummary>("/dashboard/summary", filters, { live: true });
+  const fresh = useFresh(useMemo(() => data?.recent.map((r) => r.id), [data]), liveTick); // new activity while the dashboard is open
 
   return (
     <div className="grid gap-5">
@@ -34,15 +37,11 @@ export function DashboardView() {
 
       <Card className="p-4 sm:p-5">
         <FilterBar value={filters} onChange={setFilters} />
-        <p className="mt-3 text-xs text-muted-foreground">
-          “งานเสร็จสิ้น” (ตามวันที่ทำจริง) และ “ค่าใช้จ่าย” นับย้อนหลัง 12 เดือน ส่วนจำนวนอุปกรณ์ สถานะ และงานใกล้ครบกำหนดเป็นข้อมูลปัจจุบัน
-          {data && <> ณ วันที่ {formatDate(data.asOf)}</>}
-        </p>
       </Card>
 
       {error && <ErrorState message={error} onRetry={reload} />}
       {loading && !data && <DashboardSkeleton />}
-      {data && <Content data={data} filters={filters} />}
+      {data && <Content data={data} filters={filters} fresh={fresh} />}
     </div>
   );
 }
@@ -58,15 +57,15 @@ function DashboardSkeleton() {
 }
 
 const PALETTE: { color: string; ink: "dark" | "light" }[] = [
-  { color: "#8B3DFF", ink: "light" },
-  { color: "#7CFF5B", ink: "dark" },
-  { color: "#FFB800", ink: "dark" },
-  { color: "#FF5A1F", ink: "dark" },
-  { color: "#22D3EE", ink: "dark" },
-  { color: "#FF3DA5", ink: "dark" },
+  { color: "#7B3FBF", ink: "light" },
+  { color: "#F2C14E", ink: "dark" },
+  { color: "#C77DFF", ink: "dark" },
+  { color: "#FF7A45", ink: "dark" },
+  { color: "#4FD1C5", ink: "dark" },
+  { color: "#FF6FAE", ink: "dark" },
 ];
 
-function Content({ data, filters }: { data: DashboardSummary; filters: Filters }) {
+function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Filters; fresh: ReadonlySet<number> }) {
   const { user } = useAuth();
   const canRecord = user ? canEditAssets(user.role) : false; // only a Super Admin or Technician may record work (the server enforces it too)
   const tip = useTip();
@@ -86,8 +85,6 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
   }));
   const months = data.completedByMonth.map((m) => ({ ...m, label: formatMonth(m.month) }));
   const treeItems: TreeItem[] = data.byType.map((t, i) => ({ name: t.name, value: t.count, ...PALETTE[i % PALETTE.length] }));
-  const completedTotal = data.completedByMonth.reduce((a, m) => a + m.count, 0);
-  const range = data.filters.from && data.filters.to ? `${formatDate(data.filters.from)} – ${formatDate(data.filters.to)}` : "";
 
   return (
     <div className="grid gap-4 lg:grid-cols-12">
@@ -106,18 +103,8 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
       </Card>
 
       <Card className="flex flex-col lg:col-span-7">
-        <div className="flex flex-1 flex-col gap-5 sm:flex-row">
-          <div className="shrink-0">
-            <div className="text-[13px] text-muted-foreground">งานบำรุงรักษาที่เสร็จสิ้น</div>
-            <div className="tabular mt-2.5 text-[38px] font-bold leading-none sm:text-[44px]">
-              <CountUp value={completedTotal} />
-              <span className="ml-1.5 text-base font-normal text-muted-foreground">งาน</span>
-            </div>
-            <div className="mt-2 text-[13px] text-muted-foreground">นับตามวันที่ทำจริง · {range}</div>
-            <div className="mt-1 text-[13px] text-muted-foreground">ไม่มีข้อมูลเปรียบเทียบช่วงก่อนหน้า</div>
-          </div>
-          <LineChart series={months.map((m) => ({ label: m.label, value: m.count }))} caption="รายเดือน" unit="งานเสร็จสิ้น" tip={tip} />
-        </div>
+        <CardTitle className="mb-3">งานบำรุงรักษาที่เสร็จสิ้น</CardTitle>
+        <LineChart series={months.map((m) => ({ label: m.label, value: m.count }))} unit="งานเสร็จสิ้น" tip={tip} />
         <details className="mt-3 text-sm">
           <summary className="cursor-pointer text-muted-foreground">ดูเป็นตาราง</summary>
           <table className="mt-2 w-full text-left">
@@ -133,7 +120,7 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
         </details>
       </Card>
 
-      <Card className="lg:col-span-7">
+      <Card className="lg:col-span-12">
         <CardTitle>อุปกรณ์ตามประเภท</CardTitle>
         <Treemap items={treeItems} unit="รายการ" label="อุปกรณ์ตามประเภท" tip={tip} />
         <table className="mt-4 w-full border-collapse text-sm">
@@ -161,40 +148,8 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
         </table>
       </Card>
 
-      <div className="grid gap-4 lg:col-span-5">
-      <Card>
-        <CardTitle>งานบำรุงรักษา</CardTitle>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          <Stat label="เกินกำหนด" value={<CountUp value={data.maintenance.overdue} />} tone={data.maintenance.overdue ? "bad" : undefined} />
-          <Stat label={`ใกล้ครบ ${DUE_SOON_DAYS} วัน`} value={<CountUp value={data.maintenance.dueSoon} />} tone={data.maintenance.dueSoon ? "warn" : undefined} />
-          <Stat label="ยังไม่มีแผน" value={<CountUp value={data.maintenance.noPlan} />} />
-        </div>
-        <p className="mt-4 text-xs text-muted-foreground">นับเป็นจำนวนอุปกรณ์ (1 ตัวนับครั้งเดียวแม้มีหลายแผน) ไม่นับอุปกรณ์ที่จำหน่ายออก</p>
-      </Card>
-
-      <Card>
-        <Stat
-          label="ค่าใช้จ่ายซ่อม/บำรุงรักษา"
-          value={<CountUp value={data.cost.total} format={(n) => formatNumber(n)} />}
-          note={
-            <>
-              บาท · งานที่เสร็จในช่วงที่เลือก ({formatNumber(data.cost.ordersWithCost)} งานที่ระบุค่าใช้จ่าย)
-              {data.cost.ordersWithUnknownCost > 0 && (
-                <span className="mt-1 flex items-start gap-1.5 text-warn">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  {formatNumber(data.cost.ordersWithUnknownCost)} งานยังไม่ทราบค่าใช้จ่าย (ไม่ได้นับเป็น 0 บาท)
-                </span>
-              )}
-            </>
-          }
-        />
-        <p className="mt-3 text-xs text-muted-foreground">ยังไม่มีข้อมูลเปรียบเทียบช่วงก่อนหน้า</p>
-      </Card>
-      </div>
-
       <Card className="lg:col-span-12">
         <CardTitle>รายการใกล้ครบกำหนดและเกินกำหนด</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">{canRecord ? "คลิกที่รายการเพื่อเปิดอุปกรณ์และบันทึกงานของแผนนั้นได้ทันที" : "คลิกที่รายการเพื่อเปิดดูอุปกรณ์"}</p>
         {data.upcoming.length === 0 ? (
           <div className="mt-4">
             <EmptyState title="ไม่มีงานใกล้ครบกำหนด" hint={`ไม่มีแผนที่ครบกำหนดภายใน ${DUE_SOON_DAYS} วัน`} />
@@ -250,7 +205,6 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
 
       <Card className="lg:col-span-12">
         <CardTitle>กิจกรรมล่าสุด</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">{canRecord ? "คลิกที่รายการเพื่อเปิดอุปกรณ์และบันทึกผล/แก้ไขใบงานนั้นได้ทันที" : "คลิกที่รายการเพื่อเปิดดูอุปกรณ์"}</p>
         {data.recent.length === 0 ? (
           <div className="mt-4">
             <EmptyState title="ยังไม่มีกิจกรรม" />
@@ -258,14 +212,15 @@ function Content({ data, filters }: { data: DashboardSummary; filters: Filters }
         ) : (
           <ul className="mt-3 divide-y divide-border">
             {data.recent.map((r) => (
-              <li key={r.id}>
+              <li key={r.id} className={fresh.has(r.id) ? "fresh rounded-lg" : undefined}>
                 <Link
                   href={canRecord ? `/assets/${r.assetId}?job=${r.id}` : `/assets/${r.assetId}`}
                   className="-mx-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-lg px-2 py-2.5 text-sm transition-colors hover:bg-muted/50"
                   aria-label={`${canRecord ? "เปิดใบงาน" : "ดูอุปกรณ์"} ${r.assetCode} ${r.title}`}
                 >
                   <span className="min-w-0">
-                    <b className="text-primary">{r.assetCode}</b> · {r.title}
+                    <b className="text-primary">{r.assetCode}</b>
+                    {fresh.has(r.id) && <NewBadge />} · {r.title}
                     <span className="ml-2 text-muted-foreground">
                       {WORK_ORDER_KIND_LABEL[r.kind]} · {WORK_ORDER_STATUS_LABEL[r.status]}
                     </span>

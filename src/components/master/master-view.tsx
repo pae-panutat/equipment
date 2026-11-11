@@ -5,17 +5,18 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { LOCATION_KINDS, LOCATION_KIND_LABEL, type LocationKind, type MasterItem, type MasterKind } from "@shared/index";
 import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
-import { apiSend } from "@/lib/api";
+import { ApiError, apiSend } from "@/lib/api";
+import { focusField } from "@/lib/focus-field";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
 
 const field = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
 const btn = "min-h-11 rounded-xl px-4 font-bold disabled:opacity-50";
 
-const TABS: { kind: MasterKind; label: string; noun: string; tree: boolean; codeHint: string }[] = [
-  { kind: "units", label: "ส่วนงาน", noun: "ส่วนงาน", tree: true, codeHint: "A-Z a-z 0-9 _ - ไม่เกิน 32 ตัว เช่น ENG (ใช้เป็นชื่อโฟลเดอร์รูปด้วย)" },
-  { kind: "types", label: "ประเภทอุปกรณ์", noun: "ประเภท", tree: false, codeHint: "A-Z a-z 0-9 . _ - ไม่เกิน 32 ตัว เช่น AC (ใช้นำหน้ารหัสอุปกรณ์)" },
-  { kind: "locations", label: "สถานที่", noun: "สถานที่", tree: true, codeHint: "A-Z a-z 0-9 . _ - ไม่เกิน 32 ตัว เช่น B1-3F-301" },
+const TABS: { kind: MasterKind; label: string; noun: string; tree: boolean}[] = [
+  { kind: "units", label: "ส่วนงาน", noun: "ส่วนงาน", tree: true },
+  { kind: "types", label: "ประเภทอุปกรณ์", noun: "ประเภท", tree: false },
+  { kind: "locations", label: "สถานที่", noun: "สถานที่", tree: true },
 ];
 
 type Flat = MasterItem & { depth: number };
@@ -101,7 +102,48 @@ export function MasterView() {
         ) : rows.length === 0 ? (
           <EmptyState title={`ยังไม่มี${tab.noun}`} hint={`กด "เพิ่ม${tab.noun}" เพื่อเริ่มต้น`} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* phone: one card per row (the table is for tablet and wider) */}
+          <ul className="grid gap-3 md:hidden">
+            {rows.map((r) => (
+              <li key={r.id} className="rounded-2xl border border-border bg-card p-4" style={{ marginLeft: r.depth * 14 }}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="break-words font-bold leading-snug">
+                      {r.depth > 0 && <span aria-hidden="true" className="mr-1 text-muted-foreground">└</span>}
+                      {r.name}
+                    </div>
+                    <div className="mt-0.5 break-all text-sm text-muted-foreground">
+                      {r.code}
+                      {kind === "locations" && <> · {LOCATION_KIND_LABEL[r.kind as LocationKind] ?? r.kind}</>}
+                    </div>
+                    <div className="mt-1 text-sm text-muted-foreground">อุปกรณ์ {r.assetCount} รายการ</div>
+                  </div>
+                  <div className="-mr-2 -mt-2 flex shrink-0 items-center">
+                    <button
+                      type="button"
+                      onClick={() => setDialog({ item: r })}
+                      aria-label={`แก้ไข ${r.name}`}
+                      title="แก้ไข"
+                      className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <Pencil className="size-[18px]" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleting(r)}
+                      aria-label={`ลบ ${r.name}`}
+                      title="ลบ"
+                      className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
+                    >
+                      <Trash2 className="size-[18px]" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="text-xs text-muted-foreground">
                 <tr>
@@ -149,6 +191,7 @@ export function MasterView() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
 
@@ -221,8 +264,17 @@ function MasterDialog({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return setError("กรุณากรอกชื่อ");
-    if (!editing && !code.trim()) return setError("กรุณากรอกรหัส");
+    // show the message and take the person to the field that needs fixing
+    if (!editing && !code.trim()) {
+      setError("กรุณากรอกรหัส");
+      focusField("code");
+      return;
+    }
+    if (!name.trim()) {
+      setError("กรุณากรอกชื่อ");
+      focusField("name");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -243,6 +295,7 @@ function MasterDialog({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "บันทึกไม่สำเร็จ");
+      if (!editing && err instanceof ApiError && err.status === 409) focusField("code"); // the code is already taken
       setSaving(false);
     }
   }
@@ -250,12 +303,11 @@ function MasterDialog({
   return (
     <Modal title={editing ? `แก้ไข${tab.noun}` : `เพิ่ม${tab.noun}`} onClose={() => onClose(null)} canDismiss={!dirty}>
       <form onSubmit={submit} className="grid gap-4 overflow-y-auto px-5 py-4 sm:px-6">
-        <label className="grid gap-1 text-[13px] text-muted-foreground">
+        <label data-field="code" className="grid gap-1 text-[13px] text-muted-foreground">
           รหัส *
           <input className={field} value={code} maxLength={32} disabled={editing} onChange={(e) => (setCode(e.target.value), setError(null))} data-autofocus={editing ? undefined : ""} />
-          <span className="text-xs">{editing ? "รหัสแก้ภายหลังไม่ได้ (ใช้สร้างรหัสอุปกรณ์และโฟลเดอร์รูป)" : tab.codeHint}</span>
         </label>
-        <label className="grid gap-1 text-[13px] text-muted-foreground">
+        <label data-field="name" className="grid gap-1 text-[13px] text-muted-foreground">
           ชื่อ *
           <input className={field} value={name} maxLength={191} onChange={(e) => (setName(e.target.value), setError(null))} data-autofocus={editing ? "" : undefined} />
         </label>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Boxes, Database, LayoutDashboard, LogOut, Menu, Wrench, X } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, LogOut, Menu, ScanQrCode, X } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
 import { RailTip } from "@/components/ui/rail-tip";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -60,8 +60,8 @@ function NavLinks({ onNavigate, compact = false }: { onNavigate?: () => void; co
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground" aria-hidden="true">
-        <Wrench className="size-[18px]" />
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl brand-mark" aria-hidden="true">
+        <ScanQrCode className="size-[18px]" />
       </span>
       <span className="leading-tight">
         <span className="block text-[15px] font-bold">CMU Asset</span>
@@ -121,13 +121,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {collapsed ? (
           // folded: just the purple logo, which goes to the home page
           <div className="flex flex-col items-center">
-            <RailTip label="CMU Asset · หน้าแรก" icon={Wrench}>
+            <RailTip label="CMU Asset · หน้าแรก" icon={ScanQrCode}>
               <Link
                 href="/"
                 aria-label="CMU Asset Maintenance — หน้าแรก"
-                className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90"
+                className="grid size-11 shrink-0 place-items-center rounded-xl brand-mark transition-opacity hover:opacity-90"
               >
-                <Wrench className="size-5" aria-hidden="true" />
+                <ScanQrCode className="size-5" aria-hidden="true" />
               </Link>
             </RailTip>
           </div>
@@ -138,7 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur lg:px-8 print:hidden">
+        <header className="brand-line sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur lg:px-8 print:hidden">
           {/* desktop: the hamburger at the left end of the top bar folds / opens the sidebar */}
           <button
             type="button"

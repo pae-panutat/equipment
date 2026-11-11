@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { GraduationCap, Wrench } from "lucide-react";
+import { Activity, Boxes, ClipboardCheck, GraduationCap, ScanQrCode } from "lucide-react";
 import { safeNextPath, type AuthConfig } from "@shared/index";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -61,14 +61,47 @@ export function LoginForm() {
   }
 
   return (
-    <div className="relative grid min-h-dvh place-items-center px-4 py-10">
-      <div className="absolute right-4 top-4">
+    <div className="relative isolate grid min-h-dvh place-items-center overflow-hidden px-4 py-10">
+      <div className="login-bg" aria-hidden="true">
+        <span className="login-blob left-[-10%] top-[-15%] size-[520px] bg-primary" />
+        <span className="login-blob right-[-8%] top-[20%] size-[460px] bg-gold [animation-delay:-6s]" />
+        <span className="login-blob bottom-[-20%] left-[25%] size-[480px] bg-[#6366f1] [animation-delay:-12s]" />
+      </div>
+      <div className="absolute right-4 top-4 z-10">
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-[420px]">
-        <div className="mb-6 flex items-center justify-center gap-2.5">
-          <span className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground" aria-hidden="true">
-            <Wrench className="size-5" />
+      <div className="grid w-full max-w-[1040px] items-center gap-10 lg:grid-cols-[1.1fr_420px] lg:gap-16">
+        <div className="hidden lg:block">
+          <span className="inline-grid size-16 place-items-center rounded-2xl brand-mark shadow-[0_12px_40px_-8px_var(--primary)]" aria-hidden="true">
+            <ScanQrCode className="size-9" />
+          </span>
+          <h2 className="login-title mt-6 text-5xl font-bold leading-[1.15] tracking-[-0.02em]">
+            ทะเบียนครุภัณฑ์
+            <br />
+            และงานซ่อมบำรุง
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">CMU Asset &amp; Maintenance</p>
+          <ul className="mt-8 grid max-w-md gap-3">
+            {[
+              { Icon: Boxes, text: "ทะเบียนอุปกรณ์ทุกส่วนงาน ค้นหาได้ทันที" },
+              { Icon: ScanQrCode, text: "สแกน QR Code เปิดข้อมูลอุปกรณ์ได้ที่หน้างาน" },
+              { Icon: ClipboardCheck, text: "แผนบำรุงรักษาและใบงาน แจ้งเตือนก่อนครบกำหนด" },
+              { Icon: Activity, text: "ภาพรวมและรายการใหม่อัปเดตสด" },
+            ].map(({ Icon, text }) => (
+              <li key={text} className="flex items-center gap-3 rounded-2xl border border-border bg-card/50 px-4 py-3 backdrop-blur-md">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                  <Icon className="size-[18px]" aria-hidden="true" />
+                </span>
+                <span className="text-[15px]">{text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="w-full max-w-[420px] justify-self-center">
+        <div className="mb-6 flex items-center justify-center gap-2.5 lg:hidden">
+          <span className="grid size-11 place-items-center rounded-xl brand-mark" aria-hidden="true">
+            <ScanQrCode className="size-6" />
           </span>
           <span className="leading-tight">
             <span className="block text-base font-bold">CMU Asset</span>
@@ -76,7 +109,7 @@ export function LoginForm() {
           </span>
         </div>
 
-        <Card>
+        <Card className="login-card bg-card/75 backdrop-blur-xl">
           <h1 className="text-xl font-bold">เข้าสู่ระบบ</h1>
 
           {error && (
@@ -127,7 +160,7 @@ export function LoginForm() {
             </button>
           </form>
         </Card>
-        <p className="mt-4 text-center text-xs text-muted-foreground">ไม่ควรเลือก &quot;Remember me&quot; บนเครื่องที่ใช้ร่วมกับผู้อื่น</p>
+        </div>
       </div>
     </div>
   );

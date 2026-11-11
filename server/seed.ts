@@ -120,7 +120,6 @@ async function main() {
   const dueOffsets = [-22, -6, 3, 9, 14, 26, 41, 55, 63, 78, 85, 20, -2, 33];
   let woNo = 1;
   const woNumber = () => `WO-${today.slice(0, 4)}-${String(woNo++).padStart(4, "0")}`;
-  const money = () => (rnd() > 0.2 ? (Math.round(rnd() * 3000) * 1).toFixed(2) : null); // null = unknown cost
   let planIdx = 0;
   for (const a of created) {
     const isAc = a.type === "AC";
@@ -140,7 +139,7 @@ async function main() {
         if (done > today) continue;
         await db.insert(workOrders).values({
           number: woNumber(), assetId: a.id, planId, kind: "planned", status: "done", priority: "normal", title: isAc ? "ล้างทำความสะอาดแอร์" : "ตรวจเช็กตามรอบ",
-          dueDate: done, performedOn: done, completedAt: new Date(`${done}T05:00:00Z`), laborCost: money(), partsCost: rnd() > 0.7 ? money() : null, otherCost: null,
+          dueDate: done, performedOn: done, completedAt: new Date(`${done}T05:00:00Z`),
         });
       }
     }
@@ -155,7 +154,7 @@ async function main() {
       const when = addDays(today, -Math.floor(20 + rnd() * 300));
       await db.insert(workOrders).values({
         number: woNumber(), assetId: a.id, kind: "repair", status: "done", priority: "normal", title: pick(["เปลี่ยนคาปาซิเตอร์", "เติมน้ำยาแอร์", "เปลี่ยนแผงวงจร"]),
-        dueDate: when, performedOn: when, completedAt: new Date(`${when}T08:00:00Z`), laborCost: money(), partsCost: money(), otherCost: "0.00",
+        dueDate: when, performedOn: when, completedAt: new Date(`${when}T08:00:00Z`),
       });
     }
   }

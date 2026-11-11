@@ -46,8 +46,6 @@ export type DashboardSummary = {
   byType: { id: number; name: string; count: number }[];
   byStatus: { status: AssetStatus; count: number }[];
   maintenance: { overdue: number; dueSoon: number; noPlan: number };
-  /** Repair/maintenance cost of completed work in the selected range. Unknown costs are counted separately. */
-  cost: { total: number; ordersWithCost: number; ordersWithUnknownCost: number };
   completedByMonth: { month: string; count: number }[];
   upcoming: { planId: number; assetId: number; assetCode: string; assetName: string; title: string; dueDate: string; overdue: boolean }[];
   recent: { id: number; number: string; assetId: number; assetCode: string; assetName: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }[];
@@ -67,7 +65,7 @@ export type AssetListItem = {
   nextDue: string | null;
 };
 
-/** A maintenance / repair record of one asset, as shown in its history. Costs: null = unknown, 0 = no cost. */
+/** A maintenance / repair record of one asset, as shown in its history. */
 export type WorkOrderItem = {
   id: number;
   number: string;
@@ -79,9 +77,6 @@ export type WorkOrderItem = {
   planId: number | null;
   dueDate: string | null;
   performedOn: string | null;
-  laborCost: number | null;
-  partsCost: number | null;
-  otherCost: number | null;
   recordedBy: string | null;
   /** Content version for the edit dialog (see AssetDetail.version). */
   version: string;

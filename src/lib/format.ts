@@ -4,7 +4,6 @@ const thDate = new Intl.DateTimeFormat("th-TH-u-ca-buddhist", { day: "numeric", 
 const thMonth = new Intl.DateTimeFormat("th-TH-u-ca-buddhist", { month: "short", year: "2-digit", timeZone: "UTC" });
 const thDateTime = new Intl.DateTimeFormat("th-TH-u-ca-buddhist", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 const number = new Intl.NumberFormat("th-TH");
-const baht = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 /** "2026-11-09" -> "9 พ.ย. 2569". Plain dates are formatted at UTC so they never shift by timezone. */
 export function formatDate(d: string | null | undefined): string {
@@ -22,4 +21,3 @@ export function formatDateTime(iso: string): string {
 }
 
 export const formatNumber = (n: number) => number.format(n);
-export const formatBaht = (n: number) => `${baht.format(n)} บาท`;

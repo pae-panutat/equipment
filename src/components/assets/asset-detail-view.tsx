@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Pencil, Plus, Printer } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Plus } from "lucide-react";
 import {
   PRIORITY_LABEL,
   WORK_ORDER_KIND_LABEL,
@@ -19,8 +19,10 @@ import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardTitle, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
-import { formatBaht, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
+import { useFresh } from "@/lib/use-fresh";
+import { NewBadge } from "@/components/ui/new-badge";
 import { API_PREFIX } from "@shared/index";
 
 // Status is shown as text AND colour (never colour alone).
@@ -47,8 +49,36 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+// Saves the QR code as a PNG named after the asset code (the server sends it as SVG, so draw it on a white canvas first).
+async function saveQr(id: number, code: string) {
+  try {
+    const svg = await (await fetch(`${API_PREFIX}/assets/${id}/qr.svg`, { credentials: "same-origin" })).blob();
+    const url = URL.createObjectURL(svg);
+    const img = new Image();
+    await new Promise((ok, fail) => ((img.onload = ok), (img.onerror = fail), (img.src = url)));
+    const size = 1024, pad = 64;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size + pad * 2;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, pad, pad, size, size);
+    URL.revokeObjectURL(url);
+    const png = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+    if (!png) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(png);
+    a.download = `QR-${code}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch {
+    /* nothing to save */
+  }
+}
+
 export function AssetDetailView({ id }: { id: string }) {
-  const { data: a, error, loading, reload } = useApi<AssetDetail>(`/assets/${encodeURIComponent(id)}`);
+  const { data: a, error, loading, reload, liveTick } = useApi<AssetDetail>(`/assets/${encodeURIComponent(id)}`, undefined, { live: true });
+  const fresh = useFresh(useMemo(() => a?.workOrders.map((w) => w.id), [a]), liveTick); // jobs recorded while this page is open
   const { user } = useAuth();
   const canRecord = user ? canEditAssets(user.role) : false; // only a Super Admin or Technician may record work (the server enforces it too)
   const [dialog, setDialog] = useState<{ id?: number; planId?: number } | null>(null);
@@ -136,13 +166,12 @@ export function AssetDetailView({ id }: { id: string }) {
           <p className="text-sm text-muted-foreground print:text-black">{a.name}</p>
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => void saveQr(a.id, a.code)}
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 hover:bg-muted print:hidden"
           >
-            <Printer className="size-4" aria-hidden="true" />
-            พิมพ์ป้าย QR
+            <Download className="size-4" aria-hidden="true" />
+            Save QR Code
           </button>
-          <p className="mt-3 text-xs text-muted-foreground print:hidden">สแกนแล้วต้องเข้าสู่ระบบก่อน และเห็นได้เฉพาะอุปกรณ์ที่มีสิทธิ์</p>
         </Card>
       </div>
 
@@ -205,17 +234,18 @@ export function AssetDetailView({ id }: { id: string }) {
                 {a.workOrders.map((w) => {
                   const tone = WO_TONE[w.status];
                   const date = w.performedOn ?? w.dueDate;
-                  const costs = [w.laborCost, w.partsCost, w.otherCost];
-                  const known = costs.filter((c): c is number => c !== null);
-                  const hasFooter = known.length > 0 || Boolean(w.recordedBy);
+                  const hasFooter = Boolean(w.recordedBy);
                   // rows are numbered so an absent description / footer leaves no empty gap on phones
                   const extra = (w.description ? 1 : 0) + (hasFooter ? 1 : 0);
                   const footRow = w.description ? "row-start-4" : "row-start-3";
                   const dateRow = extra === 2 ? "row-start-5" : extra === 1 ? "row-start-4" : "row-start-3";
                   return (
-                    <li key={w.id} className={`${WO_GRID} py-3.5 sm:items-start`}>
+                    <li key={w.id} className={`${WO_GRID} py-3.5 sm:items-start ${fresh.has(w.id) ? "fresh" : ""}`}>
                       <div className="contents sm:col-start-2 sm:row-start-1 sm:block">
-                        <p className="col-start-1 row-start-1 min-w-0 break-words font-bold">{w.title}</p>
+                        <p className="col-start-1 row-start-1 min-w-0 break-words font-bold">
+                          {w.title}
+                          {fresh.has(w.id) && <NewBadge />}
+                        </p>
                         <p className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:mt-1">
                           <span className="tabular">{w.number}</span>
                           <span className="rounded-md bg-muted px-2 py-0.5">{WORK_ORDER_KIND_LABEL[w.kind]}</span>
@@ -224,13 +254,7 @@ export function AssetDetailView({ id }: { id: string }) {
                         {w.description && <p className="col-span-2 row-start-3 line-clamp-3 whitespace-pre-line break-words text-sm text-muted-foreground sm:mt-1.5">{w.description}</p>}
                         {hasFooter && (
                           <p className={`col-span-2 ${footRow} flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground sm:mt-1.5`}>
-                            {known.length > 0 && (
-                              <span>
-                                ค่าใช้จ่าย {formatBaht(known.reduce((x, y) => x + y, 0))}
-                                {known.length < 3 ? " (บางรายการไม่ทราบ)" : ""}
-                              </span>
-                            )}
-                            {w.recordedBy && <span>บันทึกโดย {w.recordedBy}</span>}
+                            <span>บันทึกโดย {w.recordedBy}</span>
                           </p>
                         )}
                       </div>

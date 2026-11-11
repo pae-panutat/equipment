@@ -11,7 +11,7 @@ import { db } from "./db";
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** Columns whose content makes up a work order's version (see contentVersion). */
-export const WORK_ORDER_VERSION_KEYS = ["title", "kind", "status", "priority", "description", "due_date", "performed_on", "labor_cost", "parts_cost", "other_cost", "plan_id"] as const;
+export const WORK_ORDER_VERSION_KEYS = ["title", "kind", "status", "priority", "description", "due_date", "performed_on", "plan_id"] as const;
 const VERSION_COLUMNS = sql.raw(WORK_ORDER_VERSION_KEYS.map((k) => `w.${k}`).join(", "));
 
 // Only a Super Admin or a Technician may record maintenance work (same people who may edit assets).
@@ -28,7 +28,6 @@ const validDate = (v: string) => {
 };
 const optText = (max: number) => z.string().trim().max(max, `ยาวเกิน ${max} ตัวอักษร`).transform((v) => (v === "" ? null : v)).nullable();
 const optDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง").refine(validDate, "วันที่ไม่ถูกต้อง").nullable();
-const cost = z.number().min(0, "ค่าใช้จ่ายต้องไม่ติดลบ").max(9999999999.99, "ค่าใช้จ่ายมากเกินไป").nullable(); // null = unknown, 0 = no cost
 
 const fields = {
   kind: z.enum(WORK_ORDER_KINDS),
@@ -38,9 +37,6 @@ const fields = {
   status: z.enum(WORK_ORDER_STATUSES),
   dueDate: optDate,
   performedOn: optDate,
-  laborCost: cost,
-  partsCost: cost,
-  otherCost: cost,
   planId: z.number().int().positive().nullable(),
   assetStatus: z.enum(ASSET_STATUSES), // optionally change the asset's own status in the same save (e.g. repaired -> normal)
 };
@@ -55,7 +51,6 @@ function crossCheck(state: { status: WorkOrderStatus; performedOn: string | null
   return null;
 }
 
-const money = (v: number | null | undefined) => (v === null || v === undefined ? null : v.toFixed(2));
 const isDuplicate = (err: unknown) => {
   const e = err as { code?: string; errno?: number; cause?: { code?: string; errno?: number } };
   return e?.code === "ER_DUP_ENTRY" || e?.errno === 1062 || e?.cause?.code === "ER_DUP_ENTRY" || e?.cause?.errno === 1062;
@@ -132,7 +127,7 @@ workOrdersRouter.post("/assets/:id/work-orders", requireRole(...ASSET_EDIT_ROLES
           .values({
             number, assetId: asset.id, planId: b.planId, kind: b.kind, status: b.status, priority: b.priority, title: b.title,
             description: b.description, dueDate: b.dueDate, performedOn: b.performedOn, completedAt: b.status === "done" ? new Date() : null,
-            laborCost: money(b.laborCost), partsCost: money(b.partsCost), otherCost: money(b.otherCost), createdBy: req.user!.id,
+            createdBy: req.user!.id,
           })
           .$returningId();
         if (b.status === "done" && b.planId !== null && b.performedOn) await advancePlan(tx, b.planId, b.performedOn);
@@ -175,7 +170,6 @@ workOrdersRouter.patch("/work-orders/:id", requireRole(...ASSET_EDIT_ROLES), asy
 
   const set: Partial<typeof workOrders.$inferInsert> = {};
   for (const k of ["kind", "title", "description", "priority", "status", "dueDate", "performedOn", "planId"] as const) if (changes[k] !== undefined) (set as Record<string, unknown>)[k] = changes[k];
-  for (const k of ["laborCost", "partsCost", "otherCost"] as const) if (changes[k] !== undefined) set[k] = money(changes[k]);
   const becomesDone = merged.status === "done" && cur.status !== "done";
   if (becomesDone) set.completedAt = new Date();
 

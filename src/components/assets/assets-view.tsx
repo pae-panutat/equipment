@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus, Wrench } from "lucide-react";
@@ -13,9 +13,11 @@ import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
 import { QrCell } from "@/components/assets/qr-cell";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
+import { NewBadge } from "@/components/ui/new-badge";
 import { useAuth } from "@/lib/auth";
 import { formatDate, formatNumber } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
+import { useFresh } from "@/lib/use-fresh";
 import { cn } from "@/lib/utils";
 
 type SortKey = "code" | "name" | "status" | "nextDue";
@@ -50,16 +52,21 @@ export function AssetsView() {
     return () => clearTimeout(t);
   }, [text]);
 
-  const { data, error, loading, reload } = useApi<Paged<AssetListItem>>("/assets", {
-    unitId: filters.unitId,
-    typeId: filters.typeId,
-    status: filters.status,
-    q,
-    sort,
-    dir,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  const { data, error, loading, reload, liveTick } = useApi<Paged<AssetListItem>>(
+    "/assets",
+    {
+      unitId: filters.unitId,
+      typeId: filters.typeId,
+      status: filters.status,
+      q,
+      sort,
+      dir,
+      page,
+      pageSize: PAGE_SIZE,
+    },
+    { live: true },
+  );
+  const fresh = useFresh(useMemo(() => data?.items.map((a) => a.id), [data]), liveTick); // rows that arrived while this list was open
 
   const toggleSort = (key: SortKey) => {
     if (sort === key) setDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -77,7 +84,6 @@ export function AssetsView() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">ทะเบียนอุปกรณ์</h1>
-          <p className="mt-1 text-muted-foreground">ค้นหา กรอง และจัดเรียงอุปกรณ์ (ประมวลผลที่ฝั่งเซิร์ฟเวอร์)</p>
         </div>
         {canEdit && (
           <button
@@ -112,7 +118,6 @@ export function AssetsView() {
         />
       </Card>
 
-      {canEdit && <p className="-mb-2 text-sm text-muted-foreground">ดับเบิลคลิกที่แถวเพื่อแก้ไขอุปกรณ์ (แก้ไขรหัสไม่ได้) · บนจอสัมผัสให้เปิดหน้าอุปกรณ์แล้วกด “แก้ไขข้อมูล”</p>}
       {savedNote && (
         <p role="status" className="rounded-xl bg-ok-soft px-3 py-2.5 text-sm text-ok">
           {savedNote}
@@ -123,7 +128,91 @@ export function AssetsView() {
 
       {!error && (
         <Card className="p-0 sm:p-0">
-          <div className="overflow-x-auto">
+          {/* phone and tablet: one card per asset (a wide table would be cut off); the table is for wide screens */}
+          <div className="flex items-center gap-2 border-b border-border p-3 xl:hidden">
+            <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-muted-foreground">
+              <span className="shrink-0">เรียงตาม</span>
+              <select
+                value={sort}
+                onChange={(e) => {
+                  setSort(e.target.value as SortKey);
+                  setDir("asc");
+                  setPage(1);
+                }}
+                className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground"
+              >
+                <option value="code">รหัส</option>
+                <option value="name">ชื่อ</option>
+                <option value="status">สถานะ</option>
+                <option value="nextDue">ครบกำหนดถัดไป</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setDir((d) => (d === "asc" ? "desc" : "asc"));
+                setPage(1);
+              }}
+              aria-label={dir === "asc" ? "เรียงจากน้อยไปมาก (กดเพื่อสลับ)" : "เรียงจากมากไปน้อย (กดเพื่อสลับ)"}
+              title={dir === "asc" ? "น้อย → มาก" : "มาก → น้อย"}
+              className="grid size-11 shrink-0 place-items-center rounded-xl border border-border hover:bg-muted"
+            >
+              {dir === "asc" ? <ArrowUp className="size-4" aria-hidden="true" /> : <ArrowDown className="size-4" aria-hidden="true" />}
+            </button>
+          </div>
+          <ul className={cn("grid gap-3 p-3 xl:hidden", loading && "opacity-60")} aria-busy={loading}>
+            {loading && !data && Array.from({ length: 4 }, (_, i) => <li key={i}><Skeleton className="h-36" /></li>)}
+            {data?.items.map((a) => (
+              <li key={a.id} className={cn("rounded-2xl border border-border bg-card p-4", fresh.has(a.id) && "fresh")}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link href={`/assets/${a.id}`} className="font-bold text-primary underline-offset-2 hover:underline">
+                      {a.code}
+                    </Link>
+                    {fresh.has(a.id) && <NewBadge />}
+                    <div className="mt-0.5 break-words text-[15px] font-bold leading-snug">{a.name}</div>
+                  </div>
+                  <div className="shrink-0 pt-0.5">
+                    <StatusBadge status={a.status} />
+                  </div>
+                </div>
+                <div className="mt-1.5 break-words text-sm leading-snug text-muted-foreground">
+                  {[a.brand, a.model].filter(Boolean).join(" ") || "—"} · {a.type}
+                </div>
+                <div className="mt-0.5 break-words text-sm leading-snug text-muted-foreground">
+                  {a.unit} · {a.location ?? "ยังไม่ระบุที่ตั้ง"}
+                </div>
+                <div className="mt-3 flex items-end justify-between gap-3 border-t border-border pt-3">
+                  <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 text-sm">
+                    <div>
+                      <dt className="text-xs text-muted-foreground">ล่าสุด</dt>
+                      <dd className="tabular">{formatDate(a.lastMaintenance)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted-foreground">ครบกำหนดถัดไป</dt>
+                      <dd className="tabular">{a.nextDue ? formatDate(a.nextDue) : <span className="text-muted-foreground">ยังไม่ได้กำหนดแผน</span>}</dd>
+                    </div>
+                  </dl>
+                  <div className="flex shrink-0 items-center">
+                    <QrCell asset={a} />
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setRecordingId(a.id)}
+                        aria-label={`บันทึกงานซ่อมบำรุง ${a.code}`}
+                        title="บันทึกงานซ่อมบำรุง"
+                        className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <Wrench className="size-4" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto xl:block">
             <table className="w-full min-w-[940px] text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
@@ -148,7 +237,7 @@ export function AssetsView() {
                 {data?.items.map((a) => (
                   <tr
                     key={a.id}
-                    className={cn("border-b border-border last:border-0", loading && "opacity-60", canEdit && "cursor-pointer hover:bg-muted/40")}
+                    className={cn("border-b border-border last:border-0", loading && "opacity-60", canEdit && "cursor-pointer hover:bg-muted/40", fresh.has(a.id) && "fresh")}
                     title={canEdit ? "ดับเบิลคลิกเพื่อแก้ไข" : undefined}
                     tabIndex={canEdit ? 0 : undefined}
                     onMouseDown={(e) => {
@@ -181,6 +270,7 @@ export function AssetsView() {
                       <Link href={`/assets/${a.id}`} className="text-primary underline-offset-2 hover:underline">
                         {a.code}
                       </Link>
+                      {fresh.has(a.id) && <NewBadge />}
                     </td>
                     <td className="px-4 py-3">
                       <div>{a.name}</div>

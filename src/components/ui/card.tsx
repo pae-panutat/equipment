@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...props }: React.ComponentProps<"section">) {
-  return <section className={cn("min-w-0 rounded-[28px] border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6", className)} {...props} />;
+  return <section className={cn("min-w-0 rounded-[28px] border border-border bg-card p-5 text-card-foreground shadow-sm dark:bg-card/65 dark:backdrop-blur-md sm:p-6", className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {

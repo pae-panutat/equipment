@@ -6,7 +6,8 @@ import { PASSWORD_MIN_LENGTH, ROLES, ROLE_LABEL, type FilterOptions, type Manage
 import { Card, CardTitle, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { PasswordInput } from "@/components/ui/password-input";
-import { apiSend } from "@/lib/api";
+import { ApiError, apiSend } from "@/lib/api";
+import { focusField } from "@/lib/focus-field";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
@@ -96,7 +97,82 @@ export function UsersView() {
           ) : !users.data?.length ? (
             <EmptyState title="ยังไม่มีผู้ใช้" />
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* phone and tablet: one card per user (the table is for wide screens) */}
+            <ul className="grid gap-3 xl:hidden">
+              {users.data.map((u) => (
+                <li key={u.id} className="rounded-2xl border border-border bg-card p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="break-words font-bold leading-snug">{u.displayName}</div>
+                      <div className="mt-0.5 break-all text-sm text-muted-foreground">{u.username ?? u.cmuEmail}</div>
+                      {u.username && u.cmuEmail && <div className="break-all text-sm text-muted-foreground">{u.cmuEmail}</div>}
+                    </div>
+                    <div className="-mr-2 -mt-2 flex shrink-0 items-center">
+                      <button
+                        type="button"
+                        onClick={() => setStatusFor(u)}
+                        aria-label={`สถานะของ ${u.displayName}: ${u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"} (กดเพื่อเปลี่ยน)`}
+                        title={u.active ? "ใช้งานอยู่" : "ปิดการใช้งาน"}
+                        className={`grid size-11 place-items-center rounded-xl hover:bg-muted ${u.active ? "text-ok" : "text-bad"}`}
+                      >
+                        {u.active ? <UserCheck className="size-5" aria-hidden="true" /> : <UserX className="size-5" aria-hidden="true" />}
+                      </button>
+                      {u.id !== me?.id ? (
+                        <button
+                          type="button"
+                          onClick={() => setDeleting(u)}
+                          aria-label={`ลบผู้ใช้ ${u.displayName}`}
+                          title="ลบผู้ใช้"
+                          className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-bad-soft hover:text-bad"
+                        >
+                          <Trash2 className="size-[18px]" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span className="size-11" aria-hidden="true" /> // keeps the status icon in the same place on every card
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1 text-xs text-muted-foreground">
+                      บทบาท
+                      <select aria-label={`บทบาทของ ${u.displayName}`} className={field} value={u.role} onChange={(e) => void patch(u.id, { role: e.target.value as Role })}>
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABEL[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-xs text-muted-foreground">
+                      ส่วนงาน
+                      <select
+                        aria-label={`ส่วนงานของ ${u.displayName}`}
+                        className={field}
+                        value={u.unitId ?? ""}
+                        onChange={(e) => void patch(u.id, { unitId: e.target.value ? Number(e.target.value) : null })}
+                      >
+                        <option value="">{u.role === "super_admin" || (u.role === "technician" && u.username) ? "ทุกส่วนงาน" : "— ยังไม่กำหนด —"}</option>
+                        {units.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+                    <div className="text-sm text-muted-foreground">เข้าล่าสุด {u.lastLoginAt ? formatDate(u.lastLoginAt.slice(0, 10)) : "ยังไม่เคย"}</div>
+                    {u.username && (
+                      <button type="button" onClick={() => setResetting(u)} className="min-h-11 shrink-0 rounded-xl border border-border px-3 text-sm text-muted-foreground hover:bg-muted">
+                        ตั้งรหัสผ่านใหม่
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto xl:block">
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="text-xs text-muted-foreground">
                   <tr>
@@ -175,6 +251,7 @@ export function UsersView() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </Card>
@@ -281,7 +358,12 @@ function CreateUserDialog({ units, onClose }: { units: { id: number; label: stri
       await apiSend("POST", "/users", { ...form, unitId: form.unitId ? Number(form.unitId) : null });
       onClose(form.displayName.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "สร้างผู้ใช้ไม่สำเร็จ");
+      const message = err instanceof Error ? err.message : "สร้างผู้ใช้ไม่สำเร็จ";
+      setError(message);
+      // take the person to the field the server complained about
+      if ((err instanceof ApiError && err.status === 409) || message.startsWith("ชื่อผู้ใช้")) focusField("username");
+      else if (message.includes("รหัสผ่าน")) focusField("password");
+      else if (message.includes("ชื่อ")) focusField("displayName");
       setBusy(false);
     }
   }
@@ -289,15 +371,15 @@ function CreateUserDialog({ units, onClose }: { units: { id: number; label: stri
   return (
     <Modal title="เพิ่มผู้ใช้ (Username / Password)" onClose={() => onClose(null)} canDismiss={!busy && !dirty} className="max-w-[560px]">
       <form onSubmit={submit} className="grid gap-4 overflow-y-auto px-5 py-4 sm:grid-cols-2 sm:px-6">
-        <label className="grid gap-1 text-[13px] text-muted-foreground">
+        <label data-field="username" className="grid gap-1 text-[13px] text-muted-foreground">
           ชื่อผู้ใช้ (Username)
           <input data-autofocus className={field} value={form.username} onChange={(e) => set({ username: e.target.value })} autoComplete="off" autoCapitalize="none" spellCheck={false} required />
         </label>
-        <label className="grid gap-1 text-[13px] text-muted-foreground">
+        <label data-field="displayName" className="grid gap-1 text-[13px] text-muted-foreground">
           ชื่อที่แสดง
           <input className={field} value={form.displayName} onChange={(e) => set({ displayName: e.target.value })} required />
         </label>
-        <label className="grid gap-1 text-[13px] text-muted-foreground sm:col-span-2">
+        <label data-field="password" className="grid gap-1 text-[13px] text-muted-foreground sm:col-span-2">
           รหัสผ่านเริ่มต้น (อย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร)
           <PasswordInput value={form.password} onChange={(e) => set({ password: e.target.value })} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} required />
         </label>
@@ -322,7 +404,6 @@ function CreateUserDialog({ units, onClose }: { units: { id: number; label: stri
             ))}
           </select>
         </label>
-        <p className="text-xs text-muted-foreground sm:col-span-2">ผู้ดูแลระบบและช่างเทคนิคที่เข้าด้วย Username/Password เห็นทุกส่วนงาน ไม่ต้องกำหนดส่วนงาน</p>
         {error && (
           <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad sm:col-span-2">
             {error}
@@ -350,8 +431,16 @@ function ResetPasswordDialog({ user, onClose }: { user: ManagedUser; onClose: (d
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < PASSWORD_MIN_LENGTH) return setError(`รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`);
-    if (password !== confirm) return setError("รหัสผ่านทั้งสองช่องไม่ตรงกัน");
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setError(`รหัสผ่านต้องยาวอย่างน้อย ${PASSWORD_MIN_LENGTH} ตัวอักษร`);
+      focusField("password"); // take the person to the field that needs fixing
+      return;
+    }
+    if (password !== confirm) {
+      setError("รหัสผ่านทั้งสองช่องไม่ตรงกัน");
+      focusField("confirm");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -366,15 +455,14 @@ function ResetPasswordDialog({ user, onClose }: { user: ManagedUser; onClose: (d
   return (
     <Modal title={`ตั้งรหัสผ่านใหม่ให้ ${user.displayName}`} onClose={() => onClose(false)} canDismiss={!busy} className="max-w-[460px]">
       <form onSubmit={submit} className="grid gap-4 px-5 py-4 sm:px-6">
-        <label className="grid gap-1 text-[13px] text-muted-foreground">
+        <label data-field="password" className="grid gap-1 text-[13px] text-muted-foreground">
           รหัสผ่านใหม่ (อย่างน้อย {PASSWORD_MIN_LENGTH} ตัวอักษร)
           <PasswordInput data-autofocus value={password} onChange={(e) => { setPassword(e.target.value); setError(null); }} autoComplete="new-password" required />
         </label>
-        <label className="grid gap-1 text-[13px] text-muted-foreground">
+        <label data-field="confirm" className="grid gap-1 text-[13px] text-muted-foreground">
           พิมพ์รหัสผ่านใหม่อีกครั้ง
           <PasswordInput value={confirm} onChange={(e) => { setConfirm(e.target.value); setError(null); }} autoComplete="new-password" required />
         </label>
-        <p className="text-xs text-muted-foreground">กดรูปดวงตาเพื่อดูรหัสที่พิมพ์ เมื่อเปลี่ยนแล้วผู้ใช้จะถูกออกจากระบบทุกเครื่อง</p>
         {error && (
           <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">
             {error}

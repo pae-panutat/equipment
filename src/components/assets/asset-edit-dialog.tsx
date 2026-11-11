@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/modal";
 import { unitOptions } from "@/lib/unit-options";
 import { Skeleton } from "@/components/ui/card";
 import { ApiError, apiSend } from "@/lib/api";
+import { focusField } from "@/lib/focus-field";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 
@@ -166,7 +167,11 @@ function EditForm({
 
   function review(e: React.FormEvent) {
     e.preventDefault();
-    if (!values.name.trim()) return setError("กรุณากรอกชื่ออุปกรณ์");
+    if (!values.name.trim()) {
+      setError("กรุณากรอกชื่ออุปกรณ์");
+      focusField("name"); // take the person to the field that needs fixing
+      return;
+    }
     if (changes.length === 0) return setError("ยังไม่มีการเปลี่ยนแปลง");
     setError(null);
     setStep("confirm");
@@ -241,7 +246,7 @@ function EditForm({
           <input className={`${input} cursor-not-allowed opacity-70`} value={asset.code} readOnly disabled />
         </label>
         {FIELDS.map((f, i) => (
-          <label key={f.key} className={`grid gap-1 text-[13px] text-muted-foreground ${f.wide ? "sm:col-span-2" : ""}`}>
+          <label key={f.key} data-field={f.key} className={`grid gap-1 text-[13px] text-muted-foreground ${f.wide ? "sm:col-span-2" : ""}`}>
             {f.label}
             {f.kind === "textarea" ? (
               <textarea className={`${input} min-h-24 py-2`} value={values[f.key]} maxLength={f.max} onChange={(e) => set(f.key, e.target.value)} />

@@ -22,7 +22,8 @@ import {
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/card";
 import { ApiError, apiSend } from "@/lib/api";
-import { formatBaht, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { focusField } from "@/lib/focus-field";
 import { useApi } from "@/lib/use-api";
 
 type Values = {
@@ -34,9 +35,6 @@ type Values = {
   priority: string;
   planId: string;
   description: string;
-  laborCost: string;
-  partsCost: string;
-  otherCost: string;
   assetStatus: string; // "" = leave the asset's status alone
 };
 type Key = keyof Values;
@@ -47,14 +45,11 @@ const btn = "min-h-11 rounded-xl px-4 font-bold disabled:opacity-50";
 /** Today in Thailand as YYYY-MM-DD (the server uses the same day for its "not in the future" rule). */
 const todayBangkok = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
 
-const costText = (v: number | null) => (v === null ? "" : String(v));
-
 function initialValues(asset: AssetDetail, wo: WorkOrderItem | null, planId?: number): Values {
   if (wo) {
     return {
       kind: wo.kind, title: wo.title, status: wo.status, performedOn: wo.performedOn ?? "", dueDate: wo.dueDate ?? "", priority: wo.priority,
-      planId: wo.planId === null ? "" : String(wo.planId), description: wo.description ?? "",
-      laborCost: costText(wo.laborCost), partsCost: costText(wo.partsCost), otherCost: costText(wo.otherCost), assetStatus: "",
+      planId: wo.planId === null ? "" : String(wo.planId), description: wo.description ?? "", assetStatus: "",
     };
   }
   const activePlans = asset.plans.filter((p) => p.active);
@@ -62,24 +57,19 @@ function initialValues(asset: AssetDetail, wo: WorkOrderItem | null, planId?: nu
   if (fromPlan) {
     return {
       kind: "planned", title: fromPlan.title, status: "done", performedOn: todayBangkok(), dueDate: "", priority: "normal", planId: String(fromPlan.id),
-      description: "", laborCost: "", partsCost: "", otherCost: "", assetStatus: "",
+      description: "", assetStatus: "",
     };
   }
   return {
     kind: activePlans.length ? "planned" : "repair", title: "", status: "done", performedOn: todayBangkok(), dueDate: "", priority: "normal",
-    planId: activePlans.length === 1 ? String(activePlans[0].id) : "", description: "", laborCost: "", partsCost: "", otherCost: "", assetStatus: "",
+    planId: activePlans.length === 1 ? String(activePlans[0].id) : "", description: "", assetStatus: "",
   };
 }
 
-const cost = (raw: string) => (raw.trim() === "" ? null : Number(raw));
-/** The value as the API stores it (empty -> null; costs, ids -> numbers). */
+/** The value as the API stores it (empty -> null; ids -> numbers). */
 function toApi(key: Key, raw: string): string | number | null {
   const v = raw.trim();
   switch (key) {
-    case "laborCost":
-    case "partsCost":
-    case "otherCost":
-      return cost(v);
     case "planId":
       return v === "" ? null : Number(v);
     case "performedOn":
@@ -94,9 +84,9 @@ function toApi(key: Key, raw: string): string | number | null {
 
 const LABEL: Record<Key, string> = {
   kind: "ประเภทงาน", title: "หัวข้องาน", status: "สถานะงาน", performedOn: "วันที่ดำเนินการ", dueDate: "กำหนดเสร็จ", priority: "ความสำคัญ",
-  planId: "แผนบำรุงรักษา", description: "รายละเอียด / ผลการดำเนินการ", laborCost: "ค่าแรง", partsCost: "ค่าอะไหล่", otherCost: "ค่าใช้จ่ายอื่น", assetStatus: "สถานะอุปกรณ์",
+  planId: "แผนบำรุงรักษา", description: "รายละเอียด / ผลการดำเนินการ", assetStatus: "สถานะอุปกรณ์",
 };
-const ORDER: Key[] = ["kind", "title", "status", "performedOn", "dueDate", "priority", "planId", "description", "laborCost", "partsCost", "otherCost", "assetStatus"];
+const ORDER: Key[] = ["kind", "title", "status", "performedOn", "dueDate", "priority", "planId", "description", "assetStatus"];
 
 const UNFINISHED: readonly WorkOrderStatus[] = ["in_progress"];
 
@@ -198,8 +188,8 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
 
   // what is different from what was loaded (a new record: everything that was filled in)
   const changed = editing ? ORDER.filter((k) => toApi(k, v[k]) !== toApi(k, base[k])) : [];
-  const hasChanges = editing ? changed.length > 0 : v.title.trim() !== "" || v.description.trim() !== "" || v.laborCost !== "" || v.partsCost !== "" || v.otherCost !== "";
-  const confirmedRows = editing ? changed : ORDER.filter((k) => toApi(k, v[k]) !== null || ["laborCost", "partsCost", "otherCost"].includes(k));
+  const hasChanges = editing ? changed.length > 0 : v.title.trim() !== "" || v.description.trim() !== "";
+  const confirmedRows = editing ? changed : ORDER.filter((k) => toApi(k, v[k]) !== null);
   const dirty = hasChanges || step === "confirm";
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
@@ -221,9 +211,6 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
       case "planId": return planLabel(raw);
       case "performedOn":
       case "dueDate": return val === null ? "ไม่ระบุ" : formatDate(String(val));
-      case "laborCost":
-      case "partsCost":
-      case "otherCost": return val === null ? "ไม่ทราบ" : formatBaht(Number(val));
       case "assetStatus": return val === null ? "ไม่เปลี่ยน" : `เปลี่ยนเป็น "${ASSET_STATUS_LABEL[val as AssetStatus]}"`;
       default: return val === null || val === "" ? "ไม่ระบุ" : String(val);
     }
@@ -231,16 +218,17 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
 
   function review(e: React.FormEvent) {
     e.preventDefault();
-    if (!v.title.trim()) return setError("กรุณากรอกหัวข้องาน");
-    if (v.status === "done" && !v.performedOn) return setError("งานที่เสร็จสิ้นต้องระบุวันที่ดำเนินการ");
-    if (v.performedOn && v.performedOn > todayBangkok()) return setError("วันที่ดำเนินการต้องไม่เป็นวันในอนาคต");
-    for (const k of ["laborCost", "partsCost", "otherCost"] as const) {
-      const c = cost(v[k]);
-      if (c !== null && (!Number.isFinite(c) || c < 0 || c > 9999999999.99)) return setError(`${LABEL[k]}ไม่ถูกต้อง (ต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป หรือเว้นว่างถ้าไม่ทราบ)`);
-    }
+    // show the message and take the person to the field that needs fixing
+    const refuse = (message: string, key?: Key) => {
+      setError(message);
+      if (key) focusField(key);
+    };
+    if (!v.title.trim()) return refuse("กรุณากรอกหัวข้องาน", "title");
+    if (v.status === "done" && !v.performedOn) return refuse("งานที่เสร็จสิ้นต้องระบุวันที่ดำเนินการ", "performedOn");
+    if (v.performedOn && v.performedOn > todayBangkok()) return refuse("วันที่ดำเนินการต้องไม่เป็นวันในอนาคต", "performedOn");
     if (v.assetStatus) {
       const problem = assetStatusProblem(v.assetStatus as AssetStatus, inProgressAfter);
-      if (problem) return setError(problem);
+      if (problem) return refuse(problem, "assetStatus");
     }
     if (editing && changed.length === 0) return setError("ยังไม่มีการเปลี่ยนแปลง");
     setError(null);
@@ -335,16 +323,13 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
     );
   }
 
-  const field = (k: Key, children: React.ReactNode, wide = false, hint?: string) => (
-    <label className={`grid gap-1 text-[13px] text-muted-foreground ${wide ? "sm:col-span-2" : ""}`}>
+  const field = (k: Key, children: React.ReactNode, wide = false) => (
+    <label data-field={k} className={`grid gap-1 text-[13px] text-muted-foreground ${wide ? "sm:col-span-2" : ""}`}>
       {LABEL[k]}
       {children}
-      {hint && <span className="text-xs">{hint}</span>}
     </label>
   );
   const activePlans = asset.plans.filter((p) => p.active || String(p.id) === v.planId);
-  const money = (k: "laborCost" | "partsCost" | "otherCost") =>
-    field(k, <input className={input} type="number" step="0.01" min={0} inputMode="decimal" value={v[k]} onChange={(e) => set(k, e.target.value)} placeholder="เว้นว่าง = ไม่ทราบ" />);
 
   return (
     <>
@@ -358,9 +343,9 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
           <select className={input} value={v.status} disabled={locked} onChange={(e) => set("status", e.target.value)}>
             {(locked ? [wo.status] : WORK_ORDER_STATUSES).map((s) => <option key={s} value={s}>{WORK_ORDER_STATUS_LABEL[s]}</option>)}
           </select>
-        ), false, locked ? "งานที่เสร็จสิ้นแล้วเปลี่ยนสถานะกลับไม่ได้ (แก้รายละเอียดได้)" : undefined)}
+        ))}
         {field("title", <input data-autofocus className={input} value={v.title} maxLength={191} onChange={(e) => set("title", e.target.value)} placeholder="เช่น ล้างทำความสะอาดแอร์ / เปลี่ยนคาปาซิเตอร์" />, true)}
-        {field("performedOn", <input className={input} type="date" value={v.performedOn} max={todayBangkok()} onChange={(e) => set("performedOn", e.target.value)} />, false, v.status === "done" ? "จำเป็นเมื่อสถานะเสร็จสิ้น" : undefined)}
+        {field("performedOn", <input className={input} type="date" value={v.performedOn} max={todayBangkok()} onChange={(e) => set("performedOn", e.target.value)} />)}
         {field("dueDate", <input className={input} type="date" value={v.dueDate} onChange={(e) => set("dueDate", e.target.value)} />)}
         {field("priority", <select className={input} value={v.priority} onChange={(e) => set("priority", e.target.value)}>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}</select>)}
         {asset.plans.length > 0 &&
@@ -369,12 +354,8 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
               <option value="">— ไม่เชื่อมแผน —</option>
               {activePlans.map((p) => <option key={p.id} value={p.id}>{planLabel(String(p.id))}</option>)}
             </select>
-          ), false, "งานที่เสร็จสิ้นและเชื่อมแผน จะเลื่อนรอบถัดไปให้อัตโนมัติ")}
+          ))}
         {field("description", <textarea className={`${input} min-h-24 py-2`} value={v.description} maxLength={5000} onChange={(e) => set("description", e.target.value)} />, true)}
-        {money("laborCost")}
-        {money("partsCost")}
-        {money("otherCost")}
-        <p className="text-xs text-muted-foreground sm:col-span-2">ค่าใช้จ่าย: เว้นว่าง = ไม่ทราบ, ใส่ 0 = ไม่มีค่าใช้จ่าย (ไม่นับรวมเป็น 0 บาทในรายงาน)</p>
         {field("assetStatus", (
           <select className={input} value={v.assetStatus} onChange={(e) => set("assetStatus", e.target.value)}>
             <option value="">{auto ? `อัตโนมัติ: เปลี่ยนเป็น ${ASSET_STATUS_LABEL[auto]}` : "ไม่เปลี่ยน"} (ปัจจุบัน: {ASSET_STATUS_LABEL[asset.status]})</option>
@@ -383,7 +364,7 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
               return <option key={s} value={s} disabled={problem !== null} title={problem ?? undefined}>เปลี่ยนเป็น {ASSET_STATUS_LABEL[s]}{problem ? " (เลือกไม่ได้ตอนนี้)" : ""}</option>;
             })}
           </select>
-        ), true, auto ? `ระบบจะเปลี่ยนสถานะอุปกรณ์เป็น "${ASSET_STATUS_LABEL[auto]}" ให้อัตโนมัติ (เลือกที่นี่ถ้าต้องการกำหนดเอง)` : "สถานะอุปกรณ์เปลี่ยนตามงานอัตโนมัติ: มีงาน กำลังดำเนินการ → อุปกรณ์เป็น กำลังดำเนินการ, งานทั้งหมดเสร็จสิ้น → ปกติ (เลือกที่นี่ถ้าต้องการกำหนดเอง)")}
+        ), true)}
         {error && (
           <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad sm:col-span-2">
             {error}

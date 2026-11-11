@@ -151,7 +151,7 @@ export function LineChart({ series, caption, unit, tip }: { series: LinePoint[];
   };
 
   return (
-    <div ref={ref} className="relative min-h-[170px] flex-1 overflow-hidden rounded-[18px] border border-border bg-muted/40">
+    <div ref={ref} className="relative min-h-[300px] flex-1 overflow-hidden rounded-[18px] border border-border bg-muted/40 sm:min-h-[340px]">
       {caption && <div className="pointer-events-none absolute left-3 top-2.5 text-[11px] text-muted-foreground">{caption}</div>}
       {W > 0 && n > 0 && (
         <svg width={W} height={H} className="block" role="img" aria-label={`${caption ?? unit}: ${series.map((s) => `${s.label} ${s.value}`).join(", ")}`}>
@@ -164,6 +164,13 @@ export function LineChart({ series, caption, unit, tip }: { series: LinePoint[];
               <stop offset="0" style={{ stopColor: "var(--primary)", stopOpacity: 0.22 }} />
               <stop offset="1" style={{ stopColor: "var(--primary)", stopOpacity: 0 }} />
             </linearGradient>
+            {hover !== null && (
+              <radialGradient id={`${id}s`} gradientUnits="userSpaceOnUse" cx={P[hover][0]} cy={P[hover][1]} r={240}>
+                <stop offset="0" style={{ stopColor: "var(--card)", stopOpacity: 0 }} />
+                <stop offset="0.6" style={{ stopColor: "var(--card)", stopOpacity: 0 }} />
+                <stop offset="1" style={{ stopColor: "var(--card)", stopOpacity: 0.5 }} />
+              </radialGradient>
+            )}
           </defs>
           {ticks.map((v) => (
             <g key={v}>
@@ -186,10 +193,11 @@ export function LineChart({ series, caption, unit, tip }: { series: LinePoint[];
             />
           )}
           <circle cx={last[0]} cy={last[1]} r={4.5} style={{ fill: "var(--primary)" }} className="stroke-card" strokeWidth={2} />
+          {hover !== null && <rect width={W} height={H} fill={`url(#${id}s)`} pointerEvents="none" />}
           {hover !== null && (
             <>
               <line x1={P[hover][0]} x2={P[hover][0]} y1={0} y2={H} className="stroke-muted-foreground/50" strokeWidth={1} />
-              <circle cx={P[hover][0]} cy={P[hover][1]} r={4.5} style={{ fill: "var(--primary)" }} className="stroke-card" strokeWidth={2} />
+              <circle cx={P[hover][0]} cy={P[hover][1]} r={6} style={{ fill: "var(--primary)" }} className="stroke-card" strokeWidth={2} />
             </>
           )}
           {[0, Math.floor((n - 1) / 2), n - 1]
@@ -258,7 +266,7 @@ export function Treemap({ items, unit, label, tip }: { items: TreeItem[]; unit: 
   const total = sorted.reduce((a, b) => a + b.value, 0);
   const rects = W && H ? squarify(sorted, 0, 0, W + G, H + G) : [];
   return (
-    <div ref={ref} className="relative mt-1.5 h-[260px] sm:h-[300px]" role="img" aria-label={`${label}: ${sorted.map((i) => `${i.name} ${i.value}`).join(", ")}`}>
+    <div ref={ref} className="relative mt-1.5 h-[300px] sm:h-[360px]" role="img" aria-label={`${label}: ${sorted.map((i) => `${i.name} ${i.value}`).join(", ")}`}>
       {rects.map((r) => {
         const w = r.w - G;
         const h = r.h - G;
@@ -274,11 +282,11 @@ export function Treemap({ items, unit, label, tip }: { items: TreeItem[]; unit: 
             onPointerMove={(e) => tip.current?.show(e.clientX, e.clientY, { title: label, rows: [{ label: r.name, value: `${formatNumber(r.value)} ${unit}`, color: r.color }, { label: "สัดส่วน", value: share }] })}
             onPointerLeave={() => tip.current?.hide()}
           >
-            {showName && <div className="truncate text-[12px] font-bold">{r.name}</div>}
+            {showName && <div className="truncate text-[15px] font-bold">{r.name}</div>}
             {showNum && (
               <div className="flex items-end justify-between gap-1.5">
-                <span className="tabular text-[26px] font-bold leading-none tracking-[-0.03em]">{formatNumber(r.value)}</span>
-                {w >= 110 && <span className="rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{share}</span>}
+                <span className="tabular font-bold leading-none tracking-[-0.03em]" style={{ fontSize: Math.max(18, Math.min(60, h - (showName ? 52 : 24), w * 0.4)) }}>{formatNumber(r.value)}</span>
+                {w >= 110 && <span className="rounded-md bg-black/75 px-2 py-1 text-[13px] font-bold text-white">{share}</span>}
               </div>
             )}
           </div>
