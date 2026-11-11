@@ -13,13 +13,6 @@ import {
 } from "drizzle-orm/mysql-core";
 import { ASSET_STATUSES, INTERVAL_UNITS, PRIORITIES, ROLES, WORK_ORDER_KINDS, WORK_ORDER_STATUSES } from "../shared";
 
-// Key/value table for app-level metadata
-export const appMeta = mysqlTable("app_meta", {
-  key: varchar("meta_key", { length: 64 }).primaryKey(),
-  value: varchar("meta_value", { length: 255 }).notNull(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
-});
-
 // Owner organisation tree: university > faculty/office > department
 export const organizationUnits = mysqlTable(
   "organization_units",

@@ -20,6 +20,8 @@ export function createApp() {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("Referrer-Policy", "same-origin");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; sandbox"); // nothing in an API response may ever run or load
+    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
     next();
   });
   app.use((req, res, next) => (req.method === "POST" && /^\/api\/v1\/assets\/\d+\/images\/?$/.test(req.path) ? photoJson(req, res, next) : smallJson(req, res, next)));

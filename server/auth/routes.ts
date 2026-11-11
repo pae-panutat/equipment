@@ -41,16 +41,17 @@ authRouter.post("/login", async (req: Request, res: Response) => {
   if (!parsed.success) return httpError(res, 400, "validation_error", "กรุณากรอกชื่อผู้ใช้และรหัสผ่าน");
   const { username, password, remember } = parsed.data;
 
-  const key = `${req.ip}|${username.toLowerCase()}`;
-  if (isLocked(key)) return httpError(res, 429, "too_many_attempts", "ลองผิดหลายครั้งเกินไป กรุณารอ 15 นาทีแล้วลองใหม่");
+  const ip = req.ip ?? "unknown";
+  const name = username.toLowerCase();
+  if (isLocked(ip, name)) return httpError(res, 429, "too_many_attempts", "ลองผิดหลายครั้งเกินไป กรุณารอ 15 นาทีแล้วลองใหม่");
 
   const [user] = await db.select().from(users).where(eq(users.username, username)).limit(1);
   const ok = await verifyPassword(password, user?.passwordHash ?? null);
   if (!user || !ok || !user.active) {
-    recordFailure(key);
+    recordFailure(ip, name);
     return httpError(res, 401, "invalid_credentials", "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"); // same message for every cause
   }
-  clearFailures(key);
+  clearFailures(ip, name);
   await startSession(res, user.id, remember, "local");
   res.json({ ok: true });
 });

@@ -22,7 +22,7 @@ import { assets } from "../db/schema";
 import { requireRole } from "./auth/guard";
 import { db } from "./db";
 import { addDays, addMonths, bangkokToday } from "./dates";
-import { allowedUnitIds, assetScope, rangeQuery, rows, scopeQuery } from "./query";
+import { allLocations, allowedUnitIds, assetScope, rangeQuery, rows, scopeQuery } from "./query";
 import { authorizedAsset, contentVersion } from "./asset-access";
 import { newQrToken, qrSvg, scanUrl } from "./qr";
 import { assetImagesRouter, relocateAssetImages } from "./asset-images";
@@ -43,7 +43,7 @@ const versionOf = (row: object) => contentVersion(row, VERSION_KEYS);
 
 /** "campus › building › floor › room" for a location id. */
 async function locationPath(): Promise<(id: number | null) => string | null> {
-  const locs = await rows<{ id: number; parent_id: number | null; name: string }>(sql`SELECT id, parent_id, name FROM locations`);
+  const locs = await allLocations();
   const byId = new Map(locs.map((l) => [l.id, l]));
   return (id) => {
     const names: string[] = [];
@@ -72,6 +72,8 @@ dataRouter.get("/meta/filters", async (req, res) => {
   res.json(body);
 });
 
+const MAX_RANGE_MONTHS = 36; // the monthly chart has one point per month, so an unbounded range would be unbounded work
+
 dataRouter.get("/dashboard/summary", async (req, res) => {
   const scope = parse(scopeQuery, req.query, res);
   const range = parse(rangeQuery, req.query, res);
@@ -80,51 +82,59 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
   const today = bangkokToday();
   const to = range.to ?? today;
   const from = range.from ?? addMonths(to, -11).slice(0, 8) + "01"; // first day of the month, 11 months back
+  const spanMonths = (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7));
+  if (from > to || spanMonths > MAX_RANGE_MONTHS) {
+    return void res.status(400).json({ error: { code: "validation_error", message: `ช่วงวันที่ไม่ถูกต้อง (ต้องไม่เกิน ${MAX_RANGE_MONTHS} เดือน)` } });
+  }
   const where = await assetScope(scope, req.user!);
   const soonLimit = addDays(today, DUE_SOON_DAYS);
 
-  const [totals] = await rows<{ total: number; ac: number | null }>(
+  const q_totals = rows<{ total: number; ac: number | null }>(
     sql`SELECT COUNT(*) AS total, SUM(t.code = 'AC') AS ac FROM assets a JOIN asset_types t ON t.id = a.type_id WHERE ${where}`,
   );
-  const [acType] = await rows<{ id: number }>(sql`SELECT id FROM asset_types WHERE code = 'AC' LIMIT 1`);
-  const byType = await rows<{ id: number; name: string; count: number }>(
+  const q_acType = rows<{ id: number }>(sql`SELECT id FROM asset_types WHERE code = 'AC' LIMIT 1`);
+  const q_byType = rows<{ id: number; name: string; count: number }>(
     sql`SELECT t.id, t.name, COUNT(*) AS count FROM assets a JOIN asset_types t ON t.id = a.type_id WHERE ${where} GROUP BY t.id, t.name ORDER BY count DESC`,
   );
-  const byStatus = await rows<{ status: AssetStatus; count: number }>(
+  const q_byStatus = rows<{ status: AssetStatus; count: number }>(
     sql`SELECT a.status AS status, COUNT(*) AS count FROM assets a WHERE ${where} GROUP BY a.status ORDER BY count DESC`,
   );
-  const [maint] = await rows<{ overdue: number; due_soon: number; no_plan: number }>(sql`
+  const q_maint = rows<{ overdue: number; due_soon: number }>(sql`
     SELECT
       COUNT(DISTINCT CASE WHEN p.next_due_date < ${today} THEN a.id END) AS overdue,
-      COUNT(DISTINCT CASE WHEN p.next_due_date >= ${today} AND p.next_due_date <= ${soonLimit} THEN a.id END) AS due_soon,
-      (SELECT COUNT(*) FROM assets a2 WHERE a2.status <> 'disposed' AND NOT EXISTS
-        (SELECT 1 FROM maintenance_plans p2 WHERE p2.asset_id = a2.id AND p2.active = 1)
-        AND a2.id IN (SELECT a.id FROM assets a WHERE ${where})) AS no_plan
+      COUNT(DISTINCT CASE WHEN p.next_due_date >= ${today} AND p.next_due_date <= ${soonLimit} THEN a.id END) AS due_soon
     FROM assets a JOIN maintenance_plans p ON p.asset_id = a.id AND p.active = 1
     WHERE a.status <> 'disposed' AND ${where}`);
-  const [cost] = await rows<{ total: string | null; with_cost: number; unknown: number }>(sql`
+  const q_noPlan = rows<{ n: number }>(sql`
+    SELECT COUNT(*) AS n FROM assets a
+    WHERE a.status <> 'disposed' AND ${where}
+      AND NOT EXISTS (SELECT 1 FROM maintenance_plans p WHERE p.asset_id = a.id AND p.active = 1)`);
+  const q_cost = rows<{ total: string | null; with_cost: number; unknown: number }>(sql`
     SELECT
       SUM(COALESCE(w.labor_cost,0) + COALESCE(w.parts_cost,0) + COALESCE(w.other_cost,0)) AS total,
       SUM(w.labor_cost IS NOT NULL OR w.parts_cost IS NOT NULL OR w.other_cost IS NOT NULL) AS with_cost,
       SUM(w.labor_cost IS NULL AND w.parts_cost IS NULL AND w.other_cost IS NULL) AS unknown
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
     WHERE w.status = 'done' AND w.performed_on BETWEEN ${from} AND ${to} AND ${where}`);
-  const monthly = await rows<{ month: string; count: number }>(sql`
+  const q_monthly = rows<{ month: string; count: number }>(sql`
     SELECT DATE_FORMAT(w.performed_on, '%Y-%m') AS month, COUNT(*) AS count
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
     WHERE w.status = 'done' AND w.performed_on BETWEEN ${from} AND ${to} AND ${where}
     GROUP BY month`);
-  const upcoming = await rows<{ plan_id: number; asset_id: number; code: string; name: string; title: string; due: string }>(sql`
+  const q_upcoming = rows<{ plan_id: number; asset_id: number; code: string; name: string; title: string; due: string }>(sql`
     SELECT p.id AS plan_id, a.id AS asset_id, a.code, a.name, p.title, p.next_due_date AS due
     FROM maintenance_plans p JOIN assets a ON a.id = p.asset_id
     WHERE p.active = 1 AND a.status <> 'disposed' AND p.next_due_date <= ${soonLimit} AND ${where}
     ORDER BY p.next_due_date ASC LIMIT 8`);
-  const recent = await rows<{ id: number; number: string; asset_id: number; code: string; name: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }>(sql`
+  const q_recent = rows<{ id: number; number: string; asset_id: number; code: string; name: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }>(sql`
     SELECT w.id, w.number, a.id AS asset_id, a.code, a.name, w.title, w.kind, w.status,
            DATE_FORMAT(COALESCE(w.completed_at, w.created_at), '%Y-%m-%dT%H:%i:%sZ') AS at
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
     WHERE ${where} ORDER BY COALESCE(w.completed_at, w.created_at) DESC, w.id DESC LIMIT 8`);
 
+  // independent queries: send them together instead of one after another
+  const all = await Promise.all([q_totals, q_acType, q_byType, q_byStatus, q_maint, q_noPlan, q_cost, q_monthly, q_upcoming, q_recent]);
+  const [[totals], [acType], byType, byStatus, [maint], [noPlan], [cost], monthly, upcoming, recent] = all;
   // every month in the range, including months with no completed jobs
   const counts = new Map(monthly.map((m) => [m.month, Number(m.count)]));
   const completedByMonth: DashboardSummary["completedByMonth"] = [];
@@ -138,7 +148,7 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     totals: { assets: Number(totals.total), airConditioners: Number(totals.ac ?? 0), airConditionerTypeId: acType?.id ?? null },
     byType: byType.map((t) => ({ ...t, count: Number(t.count) })),
     byStatus: byStatus.map((s) => ({ ...s, count: Number(s.count) })),
-    maintenance: { overdue: Number(maint?.overdue ?? 0), dueSoon: Number(maint?.due_soon ?? 0), noPlan: Number(maint?.no_plan ?? 0) },
+    maintenance: { overdue: Number(maint?.overdue ?? 0), dueSoon: Number(maint?.due_soon ?? 0), noPlan: Number(noPlan?.n ?? 0) },
     cost: { total: Number(cost?.total ?? 0), ordersWithCost: Number(cost?.with_cost ?? 0), ordersWithUnknownCost: Number(cost?.unknown ?? 0) },
     completedByMonth,
     upcoming: upcoming.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, title: u.title, dueDate: u.due, overdue: u.due < today })),
@@ -161,7 +171,8 @@ dataRouter.get("/assets", async (req, res) => {
   const q = parse(listQuery, req.query, res);
   if (!q) return;
   const scopeWhere = await assetScope(q, req.user!);
-  const search = q.q ? sql` AND (a.code LIKE ${`%${q.q}%`} OR a.name LIKE ${`%${q.q}%`} OR a.brand LIKE ${`%${q.q}%`} OR a.model LIKE ${`%${q.q}%`})` : sql``;
+  const like = q.q ? `%${q.q.replace(/[\\%_]/g, (c) => "\\" + c)}%` : ""; // % and _ typed by the user are text, not wildcards
+  const search = q.q ? sql` AND (a.code LIKE ${like} OR a.name LIKE ${like} OR a.brand LIKE ${like} OR a.model LIKE ${like})` : sql``;
   const order = q.dir === "desc" ? sql`DESC` : sql`ASC`;
 
   const [{ total }] = await rows<{ total: number }>(sql`SELECT COUNT(*) AS total FROM assets a WHERE ${scopeWhere}${search}`);

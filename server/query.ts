@@ -22,9 +22,43 @@ export type Scope = z.infer<typeof scopeQuery>;
 
 export const rangeQuery = z.object({ from: isoDate.optional(), to: isoDate.optional() });
 
+// The unit and location trees are tiny and change only when a Super Admin edits master data, yet almost every request reads
+// them. Keep them in memory for a short time (and drop them on every master-data change) instead of querying each time.
+const TREE_TTL_MS = 30_000;
+type Node = { id: number; parent_id: number | null };
+type LocNode = Node & { name: string };
+
+function memo<T>(load: () => Promise<T>) {
+  let slot: { at: number; value: Promise<T> } | null = null;
+  return {
+    get(): Promise<T> {
+      if (slot && Date.now() - slot.at < TREE_TTL_MS) return slot.value;
+      const mine = { at: Date.now(), value: load() };
+      slot = mine;
+      mine.value.catch(() => {
+        if (slot === mine) slot = null; // never keep a failed load
+      });
+      return mine.value;
+    },
+    clear() {
+      slot = null;
+    },
+  };
+}
+
+const unitRows = memo(() => rows<Node>(sql`SELECT id, parent_id FROM organization_units`));
+const locationRows = memo(() => rows<LocNode>(sql`SELECT id, parent_id, name FROM locations`));
+export const allUnits = () => unitRows.get();
+export const allLocations = () => locationRows.get();
+/** Call after any master-data change so the next request sees it at once. */
+export function invalidateTreeCache(): void {
+  unitRows.clear();
+  locationRows.clear();
+}
+
 /** A unit and all of its sub-units. */
 export async function unitIdsWithDescendants(unitId: number): Promise<number[]> {
-  const all = await rows<{ id: number; parent_id: number | null }>(sql`SELECT id, parent_id FROM organization_units`);
+  const all = await allUnits();
   const ids = new Set<number>([unitId]);
   let grew = true;
   while (grew) {

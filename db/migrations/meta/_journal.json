@@ -85,6 +85,13 @@
       "when": 1794303136454,
       "tag": "0011_abandoned_galactus",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1794369288492,
+      "tag": "0012_drop_app_meta",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,7 @@ import { assetTypes, locations, organizationUnits } from "../db/schema";
 import { LOCATION_KINDS, type MasterItem, type MasterKind } from "../shared";
 import { requireRole } from "./auth/guard";
 import { db } from "./db";
-import { rows } from "./query";
+import { invalidateTreeCache, rows } from "./query";
 
 /**
  * Master data a Super Admin maintains: organization units (faculties), asset types and locations.
@@ -122,6 +122,7 @@ masterRouter.post("/:kind", async (req, res) => {
     if (kind === "units") [{ id }] = await db.insert(organizationUnits).values({ code: b.code, name: b.name, parentId: b.parentId ?? null }).$returningId();
     else if (kind === "types") [{ id }] = await db.insert(assetTypes).values({ code: b.code, name: b.name }).$returningId();
     else [{ id }] = await db.insert(locations).values({ code: b.code, name: b.name, parentId: b.parentId ?? null, kind: b.kind! }).$returningId();
+    invalidateTreeCache();
     res.status(201).json({ id });
   } catch (err) {
     if (isDuplicateKey(err)) return fail(res, 409, "duplicate", "รหัสนี้มีอยู่แล้ว กรุณาใช้รหัสอื่น");
@@ -155,6 +156,7 @@ masterRouter.patch("/:kind/:id", async (req, res) => {
   if (b.parentId !== undefined) set.parentId = b.parentId;
   if (b.kind !== undefined) set.kind = b.kind;
   if (Object.keys(set).length > 0) await db.update(c.table as typeof organizationUnits).set(set).where(eq(c.table.id, id.data));
+  invalidateTreeCache();
   res.json({ ok: true });
 });
 
@@ -178,5 +180,6 @@ masterRouter.delete("/:kind/:id", async (req, res) => {
     : null;
   if (why) return fail(res, 409, "in_use", `ลบไม่ได้: ${why}`);
   await db.delete(c.table as typeof organizationUnits).where(eq(c.table.id, cur.id));
+  invalidateTreeCache();
   res.json({ ok: true });
 });
