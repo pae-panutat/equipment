@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, Printer } from "lucide-react";
+import { CsvIcon, PdfIcon } from "@/components/ui/file-icons";
 import { ASSET_STATUS_LABEL, WORK_ORDER_KINDS, WORK_ORDER_KIND_LABEL, type AssetStatus, type WorkOrderKind } from "@shared/index";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
 import { Card, ErrorState, Skeleton } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
+import { MonthPicker } from "@/components/ui/month-picker";
 import { apiGet } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
 import { formatDate, formatMonth, formatNumber } from "@/lib/format";
@@ -22,8 +24,6 @@ const back = (ym: string, n: number) => {
   d.setUTCMonth(d.getUTCMonth() - n);
   return d.toISOString().slice(0, 7);
 };
-const input = "min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
-const btn = "text-sm inline-flex min-h-9 items-center gap-2 rounded-xl px-3.5 font-bold disabled:opacity-50";
 
 export function ReportsView() {
   const [from, setFrom] = useState(back(thisMonth(), 11));
@@ -87,18 +87,11 @@ export function ReportsView() {
         <p className="mt-1 text-muted-foreground">สรุปงานบำรุงรักษาที่เสร็จสิ้น และส่งออกทะเบียนอุปกรณ์</p>
       </div>
 
-      <Card className="grid gap-4 p-4 sm:p-5 print:hidden">
-        <FilterBar value={filters} onChange={setFilters} />
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-[13px] text-muted-foreground">
-            ตั้งแต่เดือน
-            <input type="month" className={input} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label className="grid gap-1 text-[13px] text-muted-foreground">
-            ถึงเดือน
-            <input type="month" className={input} value={to} min={from} onChange={(e) => setTo(e.target.value)} />
-          </label>
-        </div>
+      <Card className="filter-card grid gap-4 p-4 sm:p-5 print:hidden">
+        <FilterBar value={filters} onChange={setFilters}>
+          <MonthPicker label="ตั้งแต่เดือน" value={from} max={to} onChange={setFrom} />
+          <MonthPicker label="ถึงเดือน" value={to} min={from} onChange={setTo} />
+        </FilterBar>
         {!valid && <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">เดือนเริ่มต้นต้องไม่หลังเดือนสิ้นสุด</p>}
         {problem && <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">{problem}</p>}
       </Card>
@@ -111,28 +104,59 @@ export function ReportsView() {
               {formatMonth(from)} – {formatMonth(to)} · นับตามวันที่ทำจริง · ออกรายงาน {formatDate(new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }))}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 print:hidden">
-            <button type="button" onClick={exportSummary} disabled={!table} className={`${btn} border border-border hover:bg-muted`}>
-              <Download className="size-4" aria-hidden="true" /> ส่งออก Excel (CSV)
-            </button>
-            <button type="button" onClick={() => window.print()} disabled={!table} className={`${btn} bg-primary text-primary-foreground`}>
-              <Printer className="size-4" aria-hidden="true" /> พิมพ์ / บันทึกเป็น PDF
-            </button>
+          <div className="flex gap-1.5 print:hidden">
+            <IconButton big label="ส่งออกเป็น CSV (เปิดใน Excel)" icon={CsvIcon} onClick={exportSummary} disabled={!table} />
+            <IconButton big label="พิมพ์ / บันทึกเป็น PDF" icon={PdfIcon} onClick={() => window.print()} disabled={!table} />
           </div>
         </div>
 
         {error && valid && <ErrorState message={error} onRetry={reload} />}
         {loading && !table && valid && <Skeleton className="mt-4 h-48" />}
         {table && (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+          <div className="mt-4">
+            {/* phone: a card per unit */}
+            <div className="grid gap-3 md:hidden print:hidden">
+              {table.units.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">ไม่มีงานที่เสร็จสิ้นในช่วงนี้</p>}
+              {[...table.units.map((u) => ({ name: u, vals: table.months.map((m) => table.cell.get(`${u}|${m}`) ?? 0) })), { name: "รวมทั้งหมด", vals: table.months.map((m) => table.units.reduce((s, u) => s + (table.cell.get(`${u}|${m}`) ?? 0), 0)), strong: true }].map((r) => (
+                <section key={r.name} className={`rounded-2xl border p-3 ${"strong" in r ? "border-primary/40 bg-primary-soft" : "border-border bg-muted/40"}`}>
+                  <div className="mb-2 flex items-baseline justify-between gap-3">
+                    <h3 className="min-w-0 break-words text-sm font-bold">{r.name}</h3>
+                    <span className="tabular shrink-0 text-lg font-bold">{formatNumber(r.vals.reduce((a, b) => a + b, 0))}</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {table.months.map((m, i) => (
+                      <div key={m} className={`rounded-lg bg-card px-1 py-1 text-center ${r.vals[i] ? "" : "opacity-50"}`}>
+                        <div className="text-[10px] leading-tight text-muted-foreground">{formatMonth(m)}</div>
+                        <div className="tabular text-sm font-bold">{formatNumber(r.vals[i])}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            {/* tablet and computer: the table, squeezed to the width of the card (no scroll bar) */}
+            <table className="hidden w-full table-fixed border-collapse text-left text-xs md:table lg:text-sm print:table">
+              <colgroup>
+                <col className="w-[21%] lg:w-[19%]" />
+                {table.months.map((m) => (
+                  <col key={m} />
+                ))}
+                <col className="w-[7%]" />
+              </colgroup>
               <thead>
-                <tr className="text-muted-foreground">
-                  <th className="py-2 pr-3 font-normal">ส่วนงาน</th>
-                  {table.months.map((m) => (
-                    <th key={m} className="px-2 py-2 text-right font-normal">{formatMonth(m)}</th>
-                  ))}
-                  <th className="py-2 pl-3 text-right font-bold">รวม</th>
+                <tr className="align-bottom text-muted-foreground">
+                  <th className="py-2 pr-2 font-normal">ส่วนงาน</th>
+                  {table.months.map((m) => {
+                    const [mo, yr] = formatMonth(m).split(" ");
+                    return (
+                      <th key={m} className="px-0.5 py-2 text-right font-normal leading-tight">
+                        <span className="block">{mo}</span>
+                        <span className="block text-[10px] opacity-70">{yr}</span>
+                      </th>
+                    );
+                  })}
+                  <th className="py-2 pl-1 text-right font-bold">รวม</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,20 +167,20 @@ export function ReportsView() {
                   const vals = table.months.map((m) => table.cell.get(`${u}|${m}`) ?? 0);
                   return (
                     <tr key={u} className="border-t border-border">
-                      <td className="py-2.5 pr-3">{u}</td>
+                      <td className="break-words py-2.5 pr-2">{u}</td>
                       {vals.map((v, i) => (
-                        <td key={i} className={`tabular px-2 py-2.5 text-right ${v ? "" : "text-muted-foreground"}`}>{formatNumber(v)}</td>
+                        <td key={i} className={`tabular px-0.5 py-2.5 text-right ${v ? "" : "text-muted-foreground"}`}>{formatNumber(v)}</td>
                       ))}
-                      <td className="tabular py-2.5 pl-3 text-right font-bold">{formatNumber(vals.reduce((a, b) => a + b, 0))}</td>
+                      <td className="tabular py-2.5 pl-1 text-right font-bold">{formatNumber(vals.reduce((a, b) => a + b, 0))}</td>
                     </tr>
                   );
                 })}
                 <tr className="border-t-2 border-border font-bold">
-                  <td className="py-2.5 pr-3">รวมทั้งหมด</td>
+                  <td className="py-2.5 pr-2">รวมทั้งหมด</td>
                   {table.months.map((m) => (
-                    <td key={m} className="tabular px-2 py-2.5 text-right">{formatNumber(table.units.reduce((s, u) => s + (table.cell.get(`${u}|${m}`) ?? 0), 0))}</td>
+                    <td key={m} className="tabular px-0.5 py-2.5 text-right">{formatNumber(table.units.reduce((s, u) => s + (table.cell.get(`${u}|${m}`) ?? 0), 0))}</td>
                   ))}
-                  <td className="tabular py-2.5 pl-3 text-right">{formatNumber(table.total)}</td>
+                  <td className="tabular py-2.5 pl-1 text-right">{formatNumber(table.total)}</td>
                 </tr>
               </tbody>
             </table>
@@ -168,11 +192,11 @@ export function ReportsView() {
       </Card>
 
       <Card className="print:hidden">
-        <h2 className="text-lg font-bold">ทะเบียนอุปกรณ์</h2>
-        <p className="mt-1 text-sm text-muted-foreground">ส่งออกรายการอุปกรณ์ทั้งหมดตามตัวกรองด้านบน (สูงสุด 5,000 รายการ) พร้อมวันที่ติดตั้ง ประกัน และรอบบำรุงรักษา</p>
-        <button type="button" onClick={() => void exportRegister()} disabled={busy} className={`${btn} mt-3 border border-border hover:bg-muted`}>
-          <Download className="size-4" aria-hidden="true" /> {busy ? "กำลังเตรียมไฟล์..." : "ส่งออกทะเบียน (CSV)"}
-        </button>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-bold">ทะเบียนอุปกรณ์</h2>
+          <IconButton big label={busy ? "กำลังเตรียมไฟล์..." : "ส่งออกทะเบียนเป็น CSV (เปิดใน Excel)"} icon={CsvIcon} onClick={() => void exportRegister()} disabled={busy} />
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">รายการอุปกรณ์ทั้งหมดตามตัวกรองด้านบน (สูงสุด 5,000 รายการ) พร้อมวันที่ติดตั้ง ประกัน และรอบบำรุงรักษา</p>
       </Card>
     </div>
   );

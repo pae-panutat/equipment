@@ -11,6 +11,7 @@ import { focusField } from "@/lib/focus-field";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
+import { Select } from "@/components/ui/select";
 
 const field = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
 
@@ -136,20 +137,20 @@ export function UsersView() {
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <label className="grid gap-1 text-xs text-muted-foreground">
                       บทบาท
-                      <select aria-label={`บทบาทของ ${u.displayName}`} className={field} value={u.role} onChange={(e) => void patch(u.id, { role: e.target.value as Role })}>
+                      <Select aria-label={`บทบาทของ ${u.displayName}`} className={field} value={u.role} onChange={(e) => void patch(u.id, { role: e.target.value as Role })}>
                         {ROLES.map((r) => (
                           <option key={r} value={r}>
                             {ROLE_LABEL[r]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <label className="grid gap-1 text-xs text-muted-foreground">
                       ส่วนงาน
-                      <select
+                      <Select
                         aria-label={`ส่วนงานของ ${u.displayName}`}
                         className={field}
-                        value={u.unitId ?? ""}
+                        value={String(u.unitId ?? "")}
                         onChange={(e) => void patch(u.id, { unitId: e.target.value ? Number(e.target.value) : null })}
                       >
                         <option value="">{u.role === "super_admin" || (u.role === "technician" && u.username) ? "ทุกส่วนงาน" : "— ยังไม่กำหนด —"}</option>
@@ -158,7 +159,7 @@ export function UsersView() {
                             {o.label}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
@@ -193,19 +194,19 @@ export function UsersView() {
                         {u.cmuEmail && <div>{u.cmuEmail}</div>}
                       </td>
                       <td className="py-2 pr-3">
-                        <select aria-label={`บทบาทของ ${u.displayName}`} className={field} value={u.role} onChange={(e) => void patch(u.id, { role: e.target.value as Role })}>
+                        <Select aria-label={`บทบาทของ ${u.displayName}`} className={field} value={u.role} onChange={(e) => void patch(u.id, { role: e.target.value as Role })}>
                           {ROLES.map((r) => (
                             <option key={r} value={r}>
                               {ROLE_LABEL[r]}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </td>
                       <td className="py-2 pr-3">
-                        <select
+                        <Select
                           aria-label={`ส่วนงานของ ${u.displayName}`}
                           className={field}
-                          value={u.unitId ?? ""}
+                          value={String(u.unitId ?? "")}
                           onChange={(e) => void patch(u.id, { unitId: e.target.value ? Number(e.target.value) : null })}
                         >
                           <option value="">{u.role === "super_admin" || (u.role === "technician" && u.username) ? "ทุกส่วนงาน" : "— ยังไม่กำหนด —"}</option>
@@ -214,7 +215,7 @@ export function UsersView() {
                               {o.label}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </td>
                       <td className="py-2 pr-3 text-muted-foreground">{u.lastLoginAt ? formatDate(u.lastLoginAt.slice(0, 10)) : "ยังไม่เคย"}</td>
                       <td className="py-2">
@@ -294,7 +295,7 @@ export function UsersView() {
                     setStatusFor(null);
                     if (!current) void patch(target.id, { active: o.active });
                   }}
-                  className={`flex min-h-14 items-center gap-3 rounded-xl border px-4 text-left ${current ? "border-primary bg-muted" : "border-border hover:bg-muted"}`}
+                  className={`flex min-h-11 items-center gap-3 rounded-xl border px-3.5 text-left text-sm ${current ? "border-primary bg-muted" : "border-border hover:bg-muted"}`}
                 >
                   <o.Icon className={`size-5 shrink-0 ${o.tone}`} aria-hidden="true" />
                   <span className="grid flex-1">
@@ -385,24 +386,24 @@ function CreateUserDialog({ units, onClose }: { units: { id: number; label: stri
         </label>
         <label className="grid gap-1 text-[13px] text-muted-foreground">
           บทบาท
-          <select className={field} value={form.role} onChange={(e) => set({ role: e.target.value as Role })}>
+          <Select className={field} value={form.role} onChange={(e) => set({ role: e.target.value as Role })}>
             {ROLES.map((r) => (
               <option key={r} value={r}>
                 {ROLE_LABEL[r]}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="grid gap-1 text-[13px] text-muted-foreground">
           ส่วนงาน
-          <select className={field} value={form.unitId} onChange={(e) => set({ unitId: e.target.value })}>
+          <Select className={field} value={form.unitId} onChange={(e) => set({ unitId: e.target.value })}>
             <option value="">— ยังไม่กำหนด —</option>
             {units.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         {error && (
           <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad sm:col-span-2">

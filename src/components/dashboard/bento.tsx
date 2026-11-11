@@ -5,6 +5,7 @@
 // and safe handling of empty / single / all-zero data.
 
 import * as React from "react";
+import Link from "next/link";
 import { formatNumber } from "@/lib/format";
 
 /* ---------------- helpers ---------------- */
@@ -216,7 +217,8 @@ export function LineChart({ series, caption, unit, tip }: { series: LinePoint[];
 
 /* ---------------- treemap ---------------- */
 
-export type TreeItem = { name: string; value: number; color: string; ink: "dark" | "light" };
+/** `href`: where pressing the tile goes (the list of that kind). */
+export type TreeItem = { name: string; value: number; color: string; ink: "dark" | "light"; href?: string };
 type Rect = TreeItem & { x: number; y: number; w: number; h: number };
 
 function squarify(items: TreeItem[], x: number, y: number, w: number, h: number): Rect[] {
@@ -266,7 +268,7 @@ export function Treemap({ items, unit, label, tip }: { items: TreeItem[]; unit: 
   const total = sorted.reduce((a, b) => a + b.value, 0);
   const rects = W && H ? squarify(sorted, 0, 0, W + G, H + G) : [];
   return (
-    <div ref={ref} className="relative mt-1.5 h-[300px] sm:h-[360px]" role="img" aria-label={`${label}: ${sorted.map((i) => `${i.name} ${i.value}`).join(", ")}`}>
+    <div ref={ref} className="relative mt-1.5 h-[300px] sm:h-[360px]" role="group" aria-label={`${label}: ${sorted.map((i) => `${i.name} ${i.value}`).join(", ")}`}>
       {rects.map((r) => {
         const w = r.w - G;
         const h = r.h - G;
@@ -275,9 +277,11 @@ export function Treemap({ items, unit, label, tip }: { items: TreeItem[]; unit: 
         const showNum = h >= 40 && w >= 48;
         const ink = r.ink === "light" ? "text-white" : "text-neutral-950";
         return (
-          <div
+          <Tile
             key={r.name}
-            className={`absolute flex flex-col justify-between overflow-hidden rounded-[14px] p-3 transition-[left,top,width,height,filter] duration-700 [transition-timing-function:cubic-bezier(.2,.9,.25,1)] hover:brightness-110 motion-reduce:transition-none ${ink}`}
+            href={r.href}
+            aria-label={r.href ? `${r.name} ${formatNumber(r.value)} ${unit} — ดูรายการ` : undefined}
+            className={`absolute flex flex-col justify-between overflow-hidden rounded-[14px] p-3 transition-[left,top,width,height,filter] duration-700 [transition-timing-function:cubic-bezier(.2,.9,.25,1)] hover:brightness-110 motion-reduce:transition-none ${r.href ? "cursor-pointer" : ""} ${ink}`}
             style={{ left: placed ? r.x : W / 2, top: placed ? r.y : H / 2, width: placed ? w : 0, height: placed ? h : 0, background: r.color }}
             onPointerMove={(e) => tip.current?.show(e.clientX, e.clientY, { title: label, rows: [{ label: r.name, value: `${formatNumber(r.value)} ${unit}`, color: r.color }, { label: "สัดส่วน", value: share }] })}
             onPointerLeave={() => tip.current?.hide()}
@@ -289,9 +293,20 @@ export function Treemap({ items, unit, label, tip }: { items: TreeItem[]; unit: 
                 {w >= 110 && <span className="rounded-md bg-black/75 px-2 py-1 text-[13px] font-bold text-white">{share}</span>}
               </div>
             )}
-          </div>
+          </Tile>
         );
       })}
     </div>
+  );
+}
+
+/** One tile of the treemap: a link when it has somewhere to go, otherwise a plain box. */
+function Tile({ href, children, ...rest }: { href?: string; children: React.ReactNode } & React.HTMLAttributes<HTMLElement>) {
+  return href ? (
+    <Link href={href} {...(rest as React.HTMLAttributes<HTMLAnchorElement>)}>
+      {children}
+    </Link>
+  ) : (
+    <div {...(rest as React.HTMLAttributes<HTMLDivElement>)}>{children}</div>
   );
 }

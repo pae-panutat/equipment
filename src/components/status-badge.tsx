@@ -10,12 +10,13 @@ const TONE: Record<AssetStatus, string> = {
   disposed: "bg-muted text-muted-foreground line-through",
 };
 
+// The dots keep their bright colours in both themes (the text tones above are darker in the light theme so they stay readable).
 const DOT: Record<AssetStatus, string> = {
-  active: "bg-ok",
-  faulty: "bg-bad",
-  under_repair: "bg-warn",
-  inactive: "bg-muted-foreground",
-  disposed: "bg-muted-foreground",
+  active: "bg-green-400",
+  faulty: "bg-red-400",
+  under_repair: "bg-amber-400",
+  inactive: "bg-slate-400",
+  disposed: "bg-slate-400",
 };
 
 export const STATUS_DOT = DOT;

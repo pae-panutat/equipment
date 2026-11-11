@@ -10,6 +10,7 @@ import { ApiError, apiSend } from "@/lib/api";
 import { focusField } from "@/lib/focus-field";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
+import { Select } from "@/components/ui/select";
 
 type Kind = "text" | "textarea" | "date" | "type" | "status" | "unit" | "location";
 type Key =
@@ -251,16 +252,16 @@ function EditForm({
             {f.kind === "textarea" ? (
               <textarea className={`${input} min-h-24 py-2`} value={values[f.key]} maxLength={f.max} onChange={(e) => set(f.key, e.target.value)} />
             ) : f.kind === "type" ? (
-              <select className={input} value={values.typeId} onChange={(e) => set("typeId", e.target.value)}>
+              <Select className={input} value={values.typeId} onChange={(e) => set("typeId", e.target.value)}>
                 {typeOptions.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : f.kind === "status" ? (
               <>
-                <select className={input} value={values.status} onChange={(e) => set("status", e.target.value)}>
+                <Select className={input} value={values.status} onChange={(e) => set("status", e.target.value)}>
                   {ASSET_STATUSES.map((s) => {
                     const problem = s === asset.status ? null : assetStatusProblem(s, asset.inProgressJobs);
                     return (
@@ -270,25 +271,25 @@ function EditForm({
                       </option>
                     );
                   })}
-                </select>
+                </Select>
               </>
             ) : f.kind === "unit" ? (
-              <select className={input} value={values.ownerUnitId} onChange={(e) => set("ownerUnitId", e.target.value)}>
+              <Select className={input} value={values.ownerUnitId} onChange={(e) => set("ownerUnitId", e.target.value)}>
                 {unitOpts.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : f.kind === "location" ? (
-              <select className={input} value={values.locationId} onChange={(e) => set("locationId", e.target.value)}>
+              <Select className={input} value={values.locationId} onChange={(e) => set("locationId", e.target.value)}>
                 <option value="">— ไม่ระบุ —</option>
                 {locationOpts.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
               <input
                 className={input}

@@ -32,7 +32,7 @@ function NavLinks({ onNavigate, compact = false }: { onNavigate?: () => void; co
   const { user } = useAuth();
   const groups: { heading?: string; items: NavItem[] }[] = [{ items: MAIN }];
   if (user?.role === "super_admin") groups.push({ heading: "ผู้ดูแลระบบ", items: ADMIN });
-  const row = cn("flex min-h-11 items-center gap-3 rounded-2xl text-[15px] transition-colors", compact ? "justify-center px-0" : "px-3.5");
+  const row = cn("flex min-h-10 items-center gap-3 rounded-2xl text-sm transition-colors", compact ? "justify-center px-0" : "px-3.5");
   return (
     <nav aria-label="เมนูหลัก" className="flex flex-col">
       {groups.map((g, i) => (
@@ -69,7 +69,7 @@ function BottomNav() {
   const admin = user?.role === "super_admin";
   const is = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const adminActive = ADMIN.some((i) => is(i.href));
-  const cell = "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] leading-tight transition-colors";
+  const cell = "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[11px] leading-tight transition-colors";
   return (
     <>
       {more && admin && (
@@ -84,7 +84,7 @@ function BottomNav() {
                 key={href}
                 href={href}
                 aria-current={is(href) ? "page" : undefined}
-                className={cn("flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm", is(href) ? "bg-primary-soft font-bold text-primary" : "hover:bg-muted")}
+                className={cn("flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm", is(href) ? "bg-primary-soft font-bold text-primary" : "hover:bg-muted")}
               >
                 <Icon className="size-[18px]" aria-hidden="true" />
                 {label}

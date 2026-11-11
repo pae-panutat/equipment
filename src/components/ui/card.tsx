@@ -1,30 +1,11 @@
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...props }: React.ComponentProps<"section">) {
-  return <section className={cn("min-w-0 rounded-[28px] border border-border bg-card p-5 text-card-foreground shadow-sm dark:bg-card/65 dark:backdrop-blur-md sm:p-6", className)} {...props} />;
+  return <section className={cn("card-edge min-w-0 rounded-[28px] border border-border bg-card p-5 text-card-foreground shadow-sm dark:bg-card/65 dark:backdrop-blur-md sm:p-6", className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return <h2 className={cn("text-[17px] font-bold tracking-[-0.01em]", className)} {...props} />;
-}
-
-export function Stat({ label, value, note, tone }: { label: string; value: React.ReactNode; note?: React.ReactNode; tone?: "bad" | "warn" | "ok" }) {
-  return (
-    <div>
-      <div className="text-[13px] text-muted-foreground">{label}</div>
-      <div
-        className={cn(
-          "tabular mt-1.5 text-[34px] font-bold leading-none sm:text-[40px]",
-          tone === "bad" && "text-bad",
-          tone === "warn" && "text-warn",
-          tone === "ok" && "text-ok",
-        )}
-      >
-        {value}
-      </div>
-      {note && <div className="mt-2 text-[13px] text-muted-foreground">{note}</div>}
-    </div>
-  );
 }
 
 export function Skeleton({ className }: { className?: string }) {

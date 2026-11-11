@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { AuthUser, Role } from "../../shared";
 import { config } from "../config";
-import { currentUser } from "./session";
+import { currentUser, refreshSession } from "./session";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -35,6 +35,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const user = await currentUser(req);
     if (!user) return httpError(res, 401, "unauthenticated", "กรุณาเข้าสู่ระบบ");
     req.user = user;
+    await refreshSession(req, res).catch((e) => console.error("session refresh failed", e)); // never blocks the request
     next();
   } catch (err) {
     next(err);

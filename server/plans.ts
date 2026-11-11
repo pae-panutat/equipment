@@ -44,6 +44,7 @@ plansRouter.post("/assets/:id/plans", requireRole(...ASSET_EDIT_ROLES), async (r
   const asset = await authorizedAsset(res, req.user!, sql`a.id = ${id.data}`);
   if (!asset) return;
   const b = parsed.data;
+  if (b.nextDueDate < bangkokToday()) return fail(res, 400, "validation_error", "วันครบกำหนดต้องไม่เป็นวันที่ผ่านมาแล้ว");
   const [row] = await db
     .insert(maintenancePlans)
     .values({ assetId: asset.id, title: b.title, intervalValue: b.intervalValue, intervalUnit: b.intervalUnit, startDate: bangkokToday(), nextDueDate: b.nextDueDate })
@@ -63,6 +64,10 @@ plansRouter.patch("/plans/:id", requireRole(...ASSET_EDIT_ROLES), async (req, re
   if (!plan) return fail(res, 404, "not_found", "ไม่พบแผน");
   if (!(await authorizedAsset(res, req.user!, sql`a.id = ${plan.asset_id}`))) return;
   const b = parsed.data;
+  // a date may be moved forward, not back into the past (a plan that is already overdue can keep its own date)
+  if (b.nextDueDate !== undefined && b.nextDueDate !== plan.next_due_date && b.nextDueDate < bangkokToday()) {
+    return fail(res, 400, "validation_error", "วันครบกำหนดต้องไม่เป็นวันที่ผ่านมาแล้ว");
+  }
   const set: Partial<typeof maintenancePlans.$inferInsert> = {};
   if (b.title !== undefined) set.title = b.title;
   if (b.intervalValue !== undefined) set.intervalValue = b.intervalValue;

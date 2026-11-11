@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FileUp, Plus, Printer, Wrench } from "lucide-react";
+import { Download, FileUp, Plus, Wrench } from "lucide-react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { canEditAssets, type AssetListItem, type Paged } from "@shared/index";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
@@ -19,9 +19,54 @@ import { formatDate, formatNumber } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 import { useFresh } from "@/lib/use-fresh";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 
 type SortKey = "code" | "name" | "status" | "nextDue";
 const PAGE_SIZE = 20;
+
+/**
+ * Shown when assets are ticked: a card that slides in from the right edge, out of the way of the list, with what is selected
+ * and the two choices. (On a phone it sits just above the bottom menu.)
+ */
+function SelectionPanel({ picked, onCancel }: { picked: Map<number, string>; onCancel: () => void }) {
+  const open = picked.size > 0;
+  const codes = [...picked.values()];
+  return (
+    <aside
+      role="status"
+      aria-live="polite"
+      aria-hidden={!open}
+      inert={!open}
+      className={cn(
+        "fixed bottom-20 right-3 z-40 w-[min(22rem,calc(100vw-1.5rem))] rounded-2xl border border-border bg-card p-4 shadow-[0_20px_60px_-20px_rgb(0_0_0/0.45)] transition-[transform,opacity] duration-300 ease-out lg:bottom-6 lg:right-6 print:hidden",
+        open ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-[120%] opacity-0",
+      )}
+    >
+      <p className="text-sm">
+        เลือกแล้ว <b className="text-base">{picked.size}</b> รายการ
+      </p>
+      {picked.size > 200 && <p className="mt-1 text-xs text-bad">พิมพ์ได้ครั้งละไม่เกิน 200 รายการ</p>}
+      <p className="mt-1.5 line-clamp-2 break-words text-xs text-muted-foreground">
+        {codes.slice(0, 6).join(", ")}
+        {codes.length > 6 ? ` และอีก ${codes.length - 6}` : ""}
+      </p>
+      <div className="mt-3 flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="inline-flex min-h-9 items-center rounded-xl border border-border px-3.5 text-sm font-bold hover:bg-muted">
+          Cancel
+        </button>
+        {picked.size <= 200 && (
+          <Link
+            href={`/assets/labels?ids=${[...picked.keys()].join(",")}`}
+            className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-bold text-primary-foreground hover:opacity-90"
+          >
+            <Download className="size-4" aria-hidden="true" />
+            Download
+          </Link>
+        )}
+      </div>
+    </aside>
+  );
+}
 
 /** The wrench behind an asset code: opens the asset's page (where work is recorded). */
 function OpenAsset({ id, code }: { id: number; code: string }) {
@@ -93,19 +138,40 @@ export function AssetsView() {
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   // ticked rows (kept while paging) for printing QR labels together
-  const [picked, setPicked] = useState<Set<number>>(new Set());
-  const toggle = (id: number) =>
+  const [picked, setPicked] = useState<Map<number, string>>(new Map());
+  // The ticks are remembered for this browser tab, so after "Download" (the label page) the person can come back, tick more
+  // and download again without starting over. Only Cancel (or closing the tab) clears them.
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("qr-picked") ?? "[]") as [number, string][];
+      if (Array.isArray(saved) && saved.length) setPicked(new Map(saved.filter((x) => Array.isArray(x) && Number.isInteger(x[0]) && typeof x[1] === "string")));
+    } catch {
+      /* storage can be unavailable: the ticks simply are not remembered */
+    }
+    restored.current = true;
+  }, []);
+  useEffect(() => {
+    if (!restored.current) return;
+    try {
+      if (picked.size) sessionStorage.setItem("qr-picked", JSON.stringify([...picked]));
+      else sessionStorage.removeItem("qr-picked");
+    } catch {
+      /* ignore */
+    }
+  }, [picked]);
+  const toggle = (id: number, code: string) =>
     setPicked((p) => {
-      const n = new Set(p);
-      if (!n.delete(id)) n.add(id);
+      const n = new Map(p);
+      if (!n.delete(id)) n.set(id, code);
       return n;
     });
-  const pageIds = data?.items.map((a) => a.id) ?? [];
-  const allOnPage = pageIds.length > 0 && pageIds.every((i) => picked.has(i));
+  const pageRows = data?.items ?? [];
+  const allOnPage = pageRows.length > 0 && pageRows.every((a) => picked.has(a.id));
   const togglePage = () =>
     setPicked((p) => {
-      const n = new Set(p);
-      for (const i of pageIds) allOnPage ? n.delete(i) : n.add(i);
+      const n = new Map(p);
+      for (const a of pageRows) allOnPage ? n.delete(a.id) : n.set(a.id, a.code);
       return n;
     });
   const tick = "size-3.5 shrink-0 accent-[var(--primary)]";
@@ -134,35 +200,16 @@ export function AssetsView() {
         )}
       </div>
 
-      {picked.size > 0 && (
-        <div role="status" className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-card/95 px-4 py-2.5 shadow-lg backdrop-blur">
-          <span className="text-sm">
-            เลือกแล้ว <b>{picked.size}</b> รายการ{picked.size > 200 && <span className="text-bad"> (พิมพ์ได้ครั้งละไม่เกิน 200)</span>}
-          </span>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setPicked(new Set())} className="min-h-9 rounded-xl px-3 text-sm hover:bg-muted">
-              ล้างที่เลือก
-            </button>
-            {picked.size <= 200 && (
-              <Link href={`/assets/labels?ids=${[...picked].join(",")}`} className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90">
-                <Printer className="size-4" aria-hidden="true" />
-                พิมพ์ป้าย QR
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
-
-      <Card className="grid gap-4 p-4 sm:p-5">
+      <Card className="filter-card grid gap-4 p-4 sm:p-5">
         <label className="relative block">
           <span className="sr-only">ค้นหา</span>
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-primary" aria-hidden="true" />
           <input
             type="search"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="ค้นหาด้วยรหัส ชื่อ ยี่ห้อ หรือรุ่น"
-            className="min-h-9 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm"
+            className="search-main min-h-14 w-full rounded-2xl border border-primary/35 bg-card pl-12 pr-4 text-base"
           />
         </label>
         <FilterBar
@@ -188,7 +235,7 @@ export function AssetsView() {
           <div className="flex items-center gap-2 border-b border-border p-3 xl:hidden">
             <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-muted-foreground">
               <span className="shrink-0">เรียงตาม</span>
-              <select
+              <Select
                 value={sort}
                 onChange={(e) => {
                   setSort(e.target.value as SortKey);
@@ -201,7 +248,7 @@ export function AssetsView() {
                 <option value="name">ชื่อ</option>
                 <option value="status">สถานะ</option>
                 <option value="nextDue">ครบกำหนดถัดไป</option>
-              </select>
+              </Select>
             </label>
             <button
               type="button"
@@ -221,7 +268,7 @@ export function AssetsView() {
             {data?.items.map((a) => (
               <li key={a.id} className={cn("rounded-2xl border border-border bg-card p-4", fresh.has(a.id) && "fresh")}>
                 <div className="flex items-start justify-between gap-3">
-                  <input type="checkbox" className={`${tick} mt-0.5`} checked={picked.has(a.id)} onChange={() => toggle(a.id)} aria-label={`เลือก ${a.code} เพื่อพิมพ์ป้าย QR`} />
+                  <input type="checkbox" className={`${tick} mt-0.5`} checked={picked.has(a.id)} onChange={() => toggle(a.id, a.code)} aria-label={`เลือก ${a.code} เพื่อพิมพ์ป้าย QR`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-x-1">
                       <AssetCodeLink id={a.id} code={a.code} className="min-w-0 break-all font-bold text-primary underline-offset-2 hover:underline" />
@@ -301,7 +348,7 @@ export function AssetsView() {
                     }}
                   >
                     <td className="w-10 py-1.5 pl-4 pr-0">
-                      <input type="checkbox" className={tick} checked={picked.has(a.id)} onChange={() => toggle(a.id)} aria-label={`เลือก ${a.code} เพื่อพิมพ์ป้าย QR`} />
+                      <input type="checkbox" className={tick} checked={picked.has(a.id)} onChange={() => toggle(a.id, a.code)} aria-label={`เลือก ${a.code} เพื่อพิมพ์ป้าย QR`} />
                     </td>
                     <td className="px-4 py-1.5">
                       <QrCell asset={a} />
@@ -386,6 +433,8 @@ export function AssetsView() {
           }}
         />
       )}
+
+      <SelectionPanel picked={picked} onCancel={() => setPicked(new Map())} />
     </div>
   );
 }

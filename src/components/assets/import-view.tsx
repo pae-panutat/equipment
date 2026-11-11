@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { ArrowLeft, Download, FileUp } from "lucide-react";
+import { FileUp } from "lucide-react";
+import { BackLink } from "@/components/ui/back-link";
+import { CsvIcon } from "@/components/ui/file-icons";
 import { canEditAssets, type FilterOptions } from "@shared/index";
 import { Card, ErrorState } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
 import { ApiError, apiSend } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { downloadCsv, parseCsv } from "@/lib/csv";
@@ -116,27 +119,23 @@ export function ImportView() {
   return (
     <div className="grid gap-5">
       <div>
-        <Link href="/assets" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" aria-hidden="true" /> ทะเบียนอุปกรณ์
-        </Link>
-        <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">นำเข้าอุปกรณ์จากไฟล์</h1>
+        <BackLink href="/assets">ทะเบียนอุปกรณ์</BackLink>
+        <h1 className="mt-3 text-2xl font-bold tracking-[-0.02em] sm:text-3xl">นำเข้าอุปกรณ์จากไฟล์</h1>
         <p className="mt-1 text-muted-foreground">เพิ่มอุปกรณ์หลายรายการพร้อมกันจากไฟล์ CSV (ครั้งละไม่เกิน 500 รายการ)</p>
       </div>
 
       <Card className="grid gap-3">
-        <h2 className="text-lg font-bold">1. เตรียมไฟล์</h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-bold">1. เตรียมไฟล์</h2>
+          <IconButton label="ดาวน์โหลดแม่แบบ (CSV)" icon={CsvIcon} onClick={template} />
+        </div>
         <p className="text-sm text-muted-foreground">
           ดาวน์โหลดแม่แบบ กรอกใน Excel แล้วเลือก บันทึกเป็น → CSV UTF-8 คอลัมน์ที่ต้องมี: ชื่ออุปกรณ์, ประเภท, ส่วนงาน ส่วนรหัสเว้นว่างได้ ระบบจะตั้งรหัสให้เอง วันที่ใช้รูปแบบ ปปปป-ดด-วว (เช่น 2026-03-15)
         </p>
-        <div>
-          <button type="button" onClick={template} className={`${btn} border border-border hover:bg-muted`}>
-            <Download className="size-4" aria-hidden="true" /> ดาวน์โหลดแม่แบบ (CSV)
-          </button>
-        </div>
         {optsError && <ErrorState message={optsError} onRetry={reload} />}
         {opts && (
           <details className="text-sm">
-            <summary className="min-h-11 cursor-pointer py-2 text-primary">ดูชื่อประเภทและส่วนงานที่ใช้ได้</summary>
+            <summary className="min-h-9 cursor-pointer py-1.5 text-primary">ดูชื่อประเภทและส่วนงานที่ใช้ได้</summary>
             <p className="mt-1"><b>ประเภท:</b> {opts.types.map((t) => t.name).join(" · ")}</p>
             <p className="mt-1"><b>ส่วนงาน:</b> {opts.units.map((u) => u.name).join(" · ")}</p>
             <p className="mt-1 text-muted-foreground">ใช้ชื่อตามนี้ หรือรหัสในหน้าข้อมูลหลัก ส่วนสถานที่ใช้รหัส หรือชื่อเต็ม เช่น วิทยาเขต › อาคาร › ชั้น › ห้อง</p>
@@ -171,7 +170,7 @@ export function ImportView() {
             )}
             {bad.length === 0 && (
               <details className="text-sm">
-                <summary className="min-h-11 cursor-pointer py-2 text-primary">ดูรหัสที่จะได้</summary>
+                <summary className="min-h-9 cursor-pointer py-1.5 text-primary">ดูรหัสที่จะได้</summary>
                 <p className="break-words">{outcome.results.map((r) => r.code).join(", ")}</p>
               </details>
             )}

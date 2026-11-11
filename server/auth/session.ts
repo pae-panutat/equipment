@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { Request, Response } from "express";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { sessions, users, organizationUnits } from "../../db/schema";
 import { REMEMBER_DAYS, type AuthUser, type LoginMethod } from "../../shared";
 import { config } from "../config";
@@ -43,7 +43,11 @@ export function clearCookie(res: Response, name: string) {
   res.append("Set-Cookie", attrs.join("; "));
 }
 
-/** Create a session for the user and set the cookie. `remember` = persistent one-year cookie, otherwise a browser-session cookie. */
+/**
+ * Create a session for the user and set the cookie. `remember` = a persistent session that lasts one year from the last time it
+ * was used (see refreshSession: every day of use pushes the end a year ahead, so a regular user is never signed out);
+ * otherwise a browser-session cookie that also ends on the server after 12 hours.
+ */
 export async function startSession(res: Response, userId: number, remember: boolean, method: LoginMethod): Promise<void> {
   const token = crypto.randomBytes(32).toString("base64url");
   const ttl = remember ? REMEMBER_TTL : SHORT_TTL;
@@ -85,6 +89,29 @@ export async function currentUser(req: Request): Promise<AuthUser | null> {
   const loginMethod: LoginMethod = method === "cmu" ? "cmu" : "local";
   const seesAllUnits = user.role === "super_admin" || (user.role === "technician" && loginMethod === "local");
   return { ...user, loginMethod, seesAllUnits };
+}
+
+// When each session was last pushed forward (in memory), so a busy user costs one small update a few hours, not one per request.
+const lastRefresh = new Map<string, number>();
+const REFRESH_EVERY_MS = 6 * HOUR;
+
+/**
+ * Sliding expiry for persistent sessions: if the person is using the site, move the end of the session (and the cookie) a full
+ * year ahead; if they stop, it ends a year after their last visit. Browser-session logins (12 hours) are never extended.
+ */
+export async function refreshSession(req: Request, res: Response): Promise<void> {
+  const token = readCookie(req, SESSION_COOKIE);
+  if (!token) return;
+  const id = sha256(token);
+  const now = Date.now();
+  if (now - (lastRefresh.get(id) ?? 0) < REFRESH_EVERY_MS) return;
+  lastRefresh.set(id, now);
+  if (lastRefresh.size > 5000) for (const [k, t] of lastRefresh) if (now - t > REFRESH_EVERY_MS) lastRefresh.delete(k);
+  // only a persistent session (more than a day left) that has not been pushed forward for a while
+  const [done] = (await db.execute(
+    sql`UPDATE sessions SET expires_at = ${new Date(now + REMEMBER_TTL)} WHERE id = ${id} AND expires_at > ${new Date(now + 24 * HOUR)} AND expires_at < ${new Date(now + REMEMBER_TTL - HOUR)}`,
+  )) as unknown as [{ affectedRows: number }];
+  if (done.affectedRows > 0) setCookie(res, SESSION_COOKIE, token, { maxAgeMs: REMEMBER_TTL });
 }
 
 /** Remove every session of a user (used when a user is deactivated or their password changes). */

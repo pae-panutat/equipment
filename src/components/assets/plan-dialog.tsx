@@ -5,6 +5,7 @@ import type { AssetDetail, AssetListItem, Paged } from "@shared/index";
 import { Modal } from "@/components/ui/modal";
 import { apiGet, apiSend } from "@/lib/api";
 import { focusField } from "@/lib/focus-field";
+import { Select } from "@/components/ui/select";
 
 type Plan = AssetDetail["plans"][number];
 
@@ -38,6 +39,7 @@ export function PlanDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const target = assetId ?? asset?.id ?? null;
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
 
   // look up assets while typing (only when the asset has to be chosen here)
   useEffect(() => {
@@ -71,6 +73,7 @@ export function PlanDialog({
     if (!title.trim()) return refuse("กรุณากรอกชื่อแผน", "title");
     if (!Number.isInteger(n) || n < 1 || n > 999) return refuse("รอบต้องเป็นจำนวนเต็มตั้งแต่ 1 ถึง 999", "interval");
     if (!due) return refuse("กรุณาเลือกวันครบกำหนดครั้งถัดไป", "due");
+    if (due < today && due !== plan?.nextDueDate) return refuse("วันครบกำหนดต้องไม่เป็นวันที่ผ่านมาแล้ว", "due"); // an existing overdue date may stay as it is
     setSaving(true);
     setError(null);
     try {
@@ -129,15 +132,15 @@ export function PlanDialog({
           ทำซ้ำทุก *
           <div className="grid grid-cols-2 gap-3">
             <input className={input} type="number" inputMode="numeric" min={1} max={999} value={value} onChange={(e) => (setValue(e.target.value), setError(null))} aria-label="จำนวนรอบ" />
-            <select className={input} value={unit} onChange={(e) => setUnit(e.target.value as "day" | "month")} aria-label="หน่วยของรอบ">
+            <Select className={input} value={unit} onChange={(e) => setUnit(e.target.value as "day" | "month")} aria-label="หน่วยของรอบ">
               <option value="month">เดือน</option>
               <option value="day">วัน</option>
-            </select>
+            </Select>
           </div>
         </div>
         <label data-field="due" className="grid gap-1 text-[13px] text-muted-foreground">
           ครบกำหนดครั้งถัดไป *
-          <input className={input} type="date" value={due} onChange={(e) => (setDue(e.target.value), setError(null))} />
+          <input className={input} type="date" value={due} min={plan?.nextDueDate && plan.nextDueDate < today ? plan.nextDueDate : today} onChange={(e) => (setDue(e.target.value), setError(null))} />
         </label>
         {editing && (
           <label className="flex min-h-11 items-center gap-3 text-[15px]">

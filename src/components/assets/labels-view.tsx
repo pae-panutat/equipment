@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Printer } from "lucide-react";
+import { BackLink } from "@/components/ui/back-link";
 import { useState } from "react";
 import { API_PREFIX } from "@shared/index";
 import { ErrorState, Skeleton } from "@/components/ui/card";
 import { useApi } from "@/lib/use-api";
+import { Select } from "@/components/ui/select";
 
 type Label = { id: number; code: string; name: string; unit: string };
 
@@ -31,28 +32,26 @@ export function LabelsView() {
     <div className="grid gap-5">
       <style>{`@media print { @page { size: A4; margin: 0 } main { padding: 0 !important; max-width: none !important } body { background: #fff !important } body::before { display: none !important } }`}</style>
       <div className="grid gap-3 print:hidden">
-        <Link href="/assets" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" aria-hidden="true" /> ทะเบียนอุปกรณ์
-        </Link>
+        <BackLink href="/assets">ทะเบียนอุปกรณ์</BackLink>
         <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">พิมพ์ป้าย QR</h1>
         <div className="flex flex-wrap items-end gap-3">
           <label className="grid gap-1 text-[13px] text-muted-foreground">
             ขนาดป้าย
-            <select className="min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground" value={size} onChange={(e) => setSize(e.target.value as keyof typeof SIZES)}>
+            <Select className="min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground" value={size} onChange={(e) => setSize(e.target.value as keyof typeof SIZES)}>
               {Object.entries(SIZES).map(([k, v]) => (
                 <option key={k} value={k}>
                   {v.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <button
             type="button"
             onClick={() => window.print()}
             disabled={!data || data.items.length === 0}
-            className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground disabled:opacity-50"
+            className="ml-auto inline-flex min-h-9 items-center rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
-            <Printer className="size-4" aria-hidden="true" /> พิมพ์ / บันทึกเป็น PDF
+            Print
           </button>
         </div>
         <p className="text-sm text-muted-foreground">

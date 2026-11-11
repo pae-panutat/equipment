@@ -5,6 +5,7 @@ import type { HistoryItem, Paged } from "@shared/index";
 import { Card, ErrorState, Skeleton } from "@/components/ui/card";
 import { useApi } from "@/lib/use-api";
 import { HistoryList } from "./history-list";
+import { Select } from "@/components/ui/select";
 
 const ENTITIES = [
   { value: "", label: "ทั้งหมด" },
@@ -31,7 +32,7 @@ export function AuditView() {
       <Card>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           ประเภทรายการ
-          <select
+          <Select
             className="min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground"
             value={entity}
             onChange={(e) => (setEntity(e.target.value), setPage(1))}
@@ -41,7 +42,7 @@ export function AuditView() {
                 {o.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <div className="mt-3">
           {error && <ErrorState message={error} onRetry={reload} />}

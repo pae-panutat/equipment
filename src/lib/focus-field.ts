@@ -7,9 +7,9 @@ export function focusField(name: string): void {
   setTimeout(() => {
     const wrap = document.querySelector<HTMLElement>(`[data-field="${name}"]`);
     if (!wrap) return;
-    const el = wrap.matches("input, select, textarea")
+    const el = wrap.matches("input, select, textarea, button[data-select]")
       ? wrap
-      : wrap.querySelector<HTMLElement>("input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled])");
+      : wrap.querySelector<HTMLElement>("input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), button[data-select]:not([disabled])");
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     el.focus({ preventScroll: true });

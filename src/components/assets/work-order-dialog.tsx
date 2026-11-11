@@ -25,6 +25,7 @@ import { ApiError, apiSend } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { focusField } from "@/lib/focus-field";
 import { useApi } from "@/lib/use-api";
+import { Select } from "@/components/ui/select";
 
 type Values = {
   kind: string;
@@ -338,32 +339,32 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
           {asset.code} · {asset.name} · สถานะปัจจุบัน <b>{ASSET_STATUS_LABEL[asset.status]}</b>
           {editing && <> · ใบงาน <b>{wo.number}</b></>}
         </p>
-        {field("kind", <select className={input} value={v.kind} onChange={(e) => set("kind", e.target.value)}>{WORK_ORDER_KINDS.map((k) => <option key={k} value={k}>{WORK_ORDER_KIND_LABEL[k]}</option>)}</select>)}
+        {field("kind", <Select className={input} value={v.kind} onChange={(e) => set("kind", e.target.value)}>{WORK_ORDER_KINDS.map((k) => <option key={k} value={k}>{WORK_ORDER_KIND_LABEL[k]}</option>)}</Select>)}
         {field("status", (
-          <select className={input} value={v.status} disabled={locked} onChange={(e) => set("status", e.target.value)}>
+          <Select className={input} value={v.status} disabled={locked} onChange={(e) => set("status", e.target.value)}>
             {(locked ? [wo.status] : WORK_ORDER_STATUSES).map((s) => <option key={s} value={s}>{WORK_ORDER_STATUS_LABEL[s]}</option>)}
-          </select>
+          </Select>
         ))}
         {field("title", <input data-autofocus className={input} value={v.title} maxLength={191} onChange={(e) => set("title", e.target.value)} placeholder="เช่น ล้างทำความสะอาดแอร์ / เปลี่ยนคาปาซิเตอร์" />, true)}
         {field("performedOn", <input className={input} type="date" value={v.performedOn} max={todayBangkok()} onChange={(e) => set("performedOn", e.target.value)} />)}
         {field("dueDate", <input className={input} type="date" value={v.dueDate} onChange={(e) => set("dueDate", e.target.value)} />)}
-        {field("priority", <select className={input} value={v.priority} onChange={(e) => set("priority", e.target.value)}>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}</select>)}
+        {field("priority", <Select className={input} value={v.priority} onChange={(e) => set("priority", e.target.value)}>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}</Select>)}
         {asset.plans.length > 0 &&
           field("planId", (
-            <select className={input} value={v.planId} onChange={(e) => set("planId", e.target.value)}>
+            <Select className={input} value={v.planId} onChange={(e) => set("planId", e.target.value)}>
               <option value="">— ไม่เชื่อมแผน —</option>
               {activePlans.map((p) => <option key={p.id} value={p.id}>{planLabel(String(p.id))}</option>)}
-            </select>
+            </Select>
           ))}
         {field("description", <textarea className={`${input} min-h-24 py-2`} value={v.description} maxLength={5000} onChange={(e) => set("description", e.target.value)} />, true)}
         {field("assetStatus", (
-          <select className={input} value={v.assetStatus} onChange={(e) => set("assetStatus", e.target.value)}>
+          <Select className={input} value={v.assetStatus} onChange={(e) => set("assetStatus", e.target.value)}>
             <option value="">{auto ? `อัตโนมัติ: เปลี่ยนเป็น ${ASSET_STATUS_LABEL[auto]}` : "ไม่เปลี่ยน"} (ปัจจุบัน: {ASSET_STATUS_LABEL[asset.status]})</option>
             {ASSET_STATUSES.filter((s) => s !== asset.status).map((s) => {
               const problem = assetStatusProblem(s, inProgressAfter);
               return <option key={s} value={s} disabled={problem !== null} title={problem ?? undefined}>เปลี่ยนเป็น {ASSET_STATUS_LABEL[s]}{problem ? " (เลือกไม่ได้ตอนนี้)" : ""}</option>;
             })}
-          </select>
+          </Select>
         ), true)}
         {error && (
           <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad sm:col-span-2">

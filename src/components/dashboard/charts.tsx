@@ -42,28 +42,65 @@ export function CountUp({ value }: { value: number }) {
   return <>{formatNumber(Math.round(shown))}</>;
 }
 
-/** A single bar split into segments (e.g. asset status), with a legend that carries the numbers. */
-export function SegmentBar({ segments }: { segments: { label: string; value: number; dot: string }[] }) {
+/** A ring split by status, the total in the middle, and a legend that carries the numbers. */
+export function StatusDonut({ segments }: { segments: { label: string; value: number; dot: string; stroke: string }[] }) {
+  const reduce = usePrefersReducedMotion();
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)));
+    return () => cancelAnimationFrame(r);
+  }, []);
   const total = segments.reduce((a, s) => a + s.value, 0);
+  const R = 46;
+  const C = 2 * Math.PI * R;
+  const gap = segments.filter((s) => s.value > 0).length > 1 ? 3 : 0;
+  let offset = 0;
   return (
-    <div>
-      <div className="flex h-3.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={segments.map((s) => `${s.label} ${s.value}`).join(", ")}>
-        {total > 0 &&
-          segments
-            .filter((s) => s.value > 0)
-            .map((s) => <div key={s.label} className={s.dot} style={{ width: `${(s.value / total) * 100}%` }} />)}
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+      <div className="relative size-36 shrink-0" role="img" aria-label={segments.map((s) => `${s.label} ${s.value}`).join(", ")}>
+        <svg viewBox="0 0 120 120" className="size-full -rotate-90">
+          <circle cx="60" cy="60" r={R} fill="none" strokeWidth="13" style={{ stroke: "var(--muted)" }} />
+          {total > 0 &&
+            segments
+              .filter((s) => s.value > 0)
+              .map((s) => {
+                const len = (s.value / total) * C;
+                const dash = Math.max(0, len - gap);
+                const el = (
+                  <circle
+                    key={s.label}
+                    cx="60"
+                    cy="60"
+                    r={R}
+                    fill="none"
+                    strokeWidth="13"
+                    strokeLinecap={gap ? "round" : "butt"}
+                    className={s.stroke}
+                    strokeDasharray={`${drawn || reduce ? dash : 0} ${C}`}
+                    strokeDashoffset={-offset}
+                    style={{ transition: reduce ? "none" : "stroke-dasharray 1s cubic-bezier(.3,.8,.2,1)" }}
+                  />
+                );
+                offset += len;
+                return el;
+              })}
+        </svg>
+        <div className="absolute inset-0 grid place-content-center text-center">
+          <span className="tabular text-3xl font-bold leading-none">{formatNumber(total)}</span>
+          <span className="mt-1 text-xs text-muted-foreground">รายการ</span>
+        </div>
       </div>
-      <ul className="mt-4 grid gap-2 text-sm">
+      <ul className="grid min-w-[190px] flex-1 gap-1.5 text-sm">
         {segments.map((s) => (
-          <li key={s.label} className="flex items-center justify-between gap-3">
+          <li key={s.label} className={`flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-3 py-1.5 ${s.value === 0 ? "opacity-60" : ""}`}>
             <span className="inline-flex items-center gap-2">
               <i className={`size-2.5 rounded-full ${s.dot}`} aria-hidden="true" />
               {s.label}
             </span>
-            <b className="tabular">
-              {formatNumber(s.value)}
-              <span className="ml-1.5 font-normal text-muted-foreground">({total ? Math.round((s.value / total) * 100) : 0}%)</span>
-            </b>
+            <span className="inline-flex items-center gap-2">
+              <b className="tabular">{formatNumber(s.value)}</b>
+              <span className="tabular w-10 text-right text-xs text-muted-foreground">{total ? Math.round((s.value / total) * 100) : 0}%</span>
+            </span>
           </li>
         ))}
       </ul>

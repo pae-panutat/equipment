@@ -9,6 +9,7 @@ import { ApiError, apiGet, apiSend } from "@/lib/api";
 import { focusField } from "@/lib/focus-field";
 import { formatDate } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
+import { Select } from "@/components/ui/select";
 
 type V = {
   code: string; name: string; typeId: string; ownerUnitId: string; status: string; locationId: string; locationDetail: string;
@@ -208,29 +209,29 @@ function Form({
     <>
       <form id="asset-create-form" onSubmit={review} className="grid gap-4 overflow-y-auto px-5 py-4 sm:grid-cols-2 sm:px-6">
         {field("typeId", (
-          <select className={input} value={v.typeId} data-autofocus="" onChange={(e) => set("typeId", e.target.value)}>
+          <Select className={input} value={v.typeId} data-autofocus="" onChange={(e) => set("typeId", e.target.value)}>
             <option value="">— เลือกประเภท —</option>
             {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
+          </Select>
         ), { required: true })}
         {field("ownerUnitId", (
-          <select className={input} value={v.ownerUnitId} onChange={(e) => set("ownerUnitId", e.target.value)}>
+          <Select className={input} value={v.ownerUnitId} onChange={(e) => set("ownerUnitId", e.target.value)}>
             <option value="">— เลือกส่วนงาน —</option>
             {unitOpts.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
-          </select>
+          </Select>
         ), { required: true })}
         {field("code", text("code", 40, { placeholder: "เช่น AC-ENG-001" }), { wide: true, required: true })}
         {field("name", text("name", 191, { placeholder: "เช่น เครื่องปรับอากาศ Daikin ห้อง 301" }), { wide: true, required: true })}
         {field("status", (
-          <select className={input} value={v.status} onChange={(e) => set("status", e.target.value)}>
+          <Select className={input} value={v.status} onChange={(e) => set("status", e.target.value)}>
             {START_STATUSES.map((s) => <option key={s} value={s}>{ASSET_STATUS_LABEL[s]}</option>)}
-          </select>
+          </Select>
         ))}
         {field("locationId", (
-          <select className={input} value={v.locationId} onChange={(e) => set("locationId", e.target.value)}>
+          <Select className={input} value={v.locationId} onChange={(e) => set("locationId", e.target.value)}>
             <option value="">— ไม่ระบุ —</option>
             {locations.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
-          </select>
+          </Select>
         ))}
         {field("locationDetail", text("locationDetail", 255), { wide: true })}
         {field("brand", text("brand", 120))}

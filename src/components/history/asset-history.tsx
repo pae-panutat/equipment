@@ -41,7 +41,7 @@ export function AssetHistory({ assetId }: { assetId: number }) {
   const [open, setOpen] = useState(false);
   return (
     <Card className="print:hidden">
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-11 w-full items-center justify-between gap-3 text-left">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-9 w-full items-center justify-between gap-3 text-left">
         <CardTitle>ประวัติการแก้ไข</CardTitle>
         <ChevronDown className={`size-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>

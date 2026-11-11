@@ -9,6 +9,7 @@ import { ApiError, apiSend } from "@/lib/api";
 import { focusField } from "@/lib/focus-field";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
+import { Select } from "@/components/ui/select";
 
 const field = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
 const btn = "text-sm min-h-9 rounded-xl px-3.5 font-bold disabled:opacity-50";
@@ -314,19 +315,19 @@ function MasterDialog({
         {kind === "locations" && (
           <label className="grid gap-1 text-[13px] text-muted-foreground">
             ชนิด
-            <select className={field} value={locKind} onChange={(e) => setLocKind(e.target.value)}>
+            <Select className={field} value={locKind} onChange={(e) => setLocKind(e.target.value)}>
               {LOCATION_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {LOCATION_KIND_LABEL[k]}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {tab.tree && (
           <label className="grid gap-1 text-[13px] text-muted-foreground">
             อยู่ภายใต้
-            <select className={field} value={parentId} onChange={(e) => setParentId(e.target.value)}>
+            <Select className={field} value={parentId} onChange={(e) => setParentId(e.target.value)}>
               <option value="">— ระดับบนสุด —</option>
               {parents.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -334,7 +335,7 @@ function MasterDialog({
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {error && (

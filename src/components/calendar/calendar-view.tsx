@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { canEditAssets, type AssetDetail, type CalendarItem } from "@shared/index";
 import { PlanDialog } from "@/components/assets/plan-dialog";
 import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
+import { TONE } from "@/lib/due-tone";
 import { ItemPopup } from "./item-popup";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
 import { Card, ErrorState, Skeleton } from "@/components/ui/card";
@@ -33,7 +34,6 @@ export function CalendarView() {
   const [error2, setError2] = useState<string | null>(null);
   const [view, setView] = useState<CalendarItem | null>(null); // the entry whose details are open
   const [adding, setAdding] = useState<string | null>(null); // a new plan, due on this day
-  const [editPlan, setEditPlan] = useState<{ assetId: number; plan: AssetDetail["plans"][number] } | null>(null);
   const [record, setRecord] = useState<{ assetId: number; planId?: number; id?: number } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const saved = (message: string) => {
@@ -49,20 +49,17 @@ export function CalendarView() {
     return m;
   }, [data]);
 
-  // 6 weeks starting on the Sunday on or before the 1st
+  // the days of this month only: blank cells before the 1st and after the last day, as many weeks as the month needs
   const cells = useMemo(() => {
     const first = new Date(`${month}-01T00:00:00Z`);
-    const start = new Date(first);
-    start.setUTCDate(1 - first.getUTCDay());
-    return Array.from({ length: 42 }, (_, i) => {
-      const d = new Date(start);
-      d.setUTCDate(start.getUTCDate() + i);
-      return d.toISOString().slice(0, 10);
-    });
+    const days = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+    const lead = first.getUTCDay();
+    const total = Math.ceil((lead + days) / 7) * 7;
+    return Array.from({ length: total }, (_, i) => (i < lead || i >= lead + days ? null : `${month}-${String(i - lead + 1).padStart(2, "0")}`));
   }, [month]);
 
   async function moveTo(item: CalendarItem, date: string) {
-    if (item.kind !== "plan" || date === item.date || !canMove) return;
+    if (item.kind !== "plan" || date === item.date || !canMove || date < now) return; // a plan cannot be moved to a day that has passed
     setMoving(`${item.kind}${item.id}`);
     setError2(null);
     try {
@@ -76,8 +73,7 @@ export function CalendarView() {
   }
 
   const dayItems = picked ? (byDay.get(picked) ?? []) : [];
-  const chip = (i: CalendarItem, date: string) =>
-    i.kind === "job" ? "bg-warn-soft text-warn" : date < now ? "bg-bad-soft text-bad" : "bg-primary-soft text-primary";
+  const tone = (i: CalendarItem, date: string) => (date < now ? TONE.overdue : i.kind === "job" ? TONE.job : TONE.plan);
 
   return (
     <div className="grid gap-5">
@@ -86,7 +82,7 @@ export function CalendarView() {
         <p className="mt-1 text-muted-foreground">{canMove ? "ลากแผนไปวางวันใหม่เพื่อเลื่อนวัน หรือกดวันเพื่อดูรายการ" : "กดวันเพื่อดูรายการ"}</p>
       </div>
 
-      <Card className="p-4 sm:p-5">
+      <Card className="filter-card p-4 sm:p-5">
         <FilterBar value={filters} onChange={setFilters} />
       </Card>
 
@@ -97,14 +93,6 @@ export function CalendarView() {
           </button>
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold">{formatMonth(month)}</h2>
-            <button type="button" onClick={() => (setMonth(now.slice(0, 7)), setPicked(now))} className="min-h-9 rounded-xl px-3 text-sm text-primary hover:bg-primary-soft">
-              วันนี้
-            </button>
-            {canMove && (
-              <button type="button" onClick={() => setAdding(picked ?? now)} className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-primary px-3.5 text-sm font-bold text-primary-foreground">
-                <Plus className="size-4" aria-hidden="true" /> เพิ่มแผน
-              </button>
-            )}
           </div>
           <button type="button" onClick={() => setMonth(shift(month, 1))} aria-label="เดือนถัดไป" className="grid size-9 place-items-center rounded-xl border border-border hover:bg-muted">
             <ChevronRight className="size-5" aria-hidden="true" />
@@ -121,9 +109,10 @@ export function CalendarView() {
                 {d}
               </div>
             ))}
-            {cells.map((date) => {
+            {cells.map((date, n) => {
+              if (date === null) return <div key={`blank${n}`} className="min-h-[64px] bg-muted/40 sm:min-h-[104px]" aria-hidden="true" />;
               const items = byDay.get(date) ?? [];
-              const inMonth = date.startsWith(month);
+              const past = date < now;
               return (
                 <div
                   key={date}
@@ -137,8 +126,19 @@ export function CalendarView() {
                       /* not one of ours */
                     }
                   }}
-                  className={cn("min-h-[64px] bg-card p-1 sm:min-h-[104px] sm:p-1.5", !inMonth && "opacity-45")}
+                  className={cn("group relative min-h-[64px] bg-card p-1 sm:min-h-[104px] sm:p-1.5")}
                 >
+                  {canMove && !past && (
+                    <button
+                      type="button"
+                      onClick={() => setAdding(date)}
+                      aria-label={`เพิ่มแผนวันที่ ${formatDate(date)}`}
+                      title="เพิ่มแผนในวันนี้"
+                      className="absolute bottom-1 right-1 grid size-6 place-items-center rounded-full bg-muted/70 text-muted-foreground opacity-0 transition-opacity hover:bg-primary-soft hover:text-primary focus-visible:opacity-100 group-hover:opacity-60 hover:!opacity-100 [@media(hover:none)]:opacity-40"
+                    >
+                      <Plus className="size-3.5" aria-hidden="true" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setPicked(date)}
@@ -155,7 +155,7 @@ export function CalendarView() {
                   {/* phone: dots only; larger screens: the plan names */}
                   <div className="mt-1 flex flex-wrap gap-0.5 sm:hidden">
                     {items.slice(0, 4).map((i) => (
-                      <i key={`${i.kind}${i.id}`} className={cn("size-2 rounded-full", i.kind === "job" ? "bg-warn" : date < now ? "bg-bad" : "bg-primary")} />
+                      <i key={`${i.kind}${i.id}`} className={cn("size-2 rounded-full", tone(i, date).dot)} />
                     ))}
                   </div>
                   <ul className="mt-1 hidden gap-1 sm:grid">
@@ -168,7 +168,7 @@ export function CalendarView() {
                         <button
                           type="button"
                           onClick={() => (setPicked(date), setView(i))}
-                          className={cn("block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[11px] hover:brightness-125", chip(i, date), canMove && i.kind === "plan" && "cursor-grab", moving === `${i.kind}${i.id}` && "opacity-50")}
+                          className={cn("block w-full truncate rounded-md px-1.5 py-0.5 text-left text-[11px] hover:brightness-95", tone(i, date).chip, canMove && i.kind === "plan" && "cursor-grab", moving === `${i.kind}${i.id}` && "opacity-50")}
                           title={`${i.assetCode} · ${i.title}`}
                         >
                           {i.assetCode}
@@ -189,22 +189,17 @@ export function CalendarView() {
           </div>
         )}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-full bg-primary" /> แผนบำรุงรักษา</span>
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-full bg-bad" /> เกินกำหนด</span>
-          <span className="inline-flex items-center gap-1.5"><i className="size-2 rounded-full bg-warn" /> ใบงานที่ยังไม่เสร็จ</span>
+          {([TONE.plan, TONE.overdue, TONE.job] as const).map((t) => (
+            <span key={t.name} className="inline-flex items-center gap-1.5">
+              <i className={cn("size-2.5 rounded-full", t.dot)} /> {t.name}
+            </span>
+          ))}
         </div>
       </Card>
 
       {picked && (
         <Card>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-bold">{formatDate(picked)}</h2>
-            {canMove && (
-              <button type="button" onClick={() => setAdding(picked)} className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border px-3.5 text-sm font-bold hover:bg-muted">
-                <Plus className="size-4" aria-hidden="true" /> เพิ่มแผนในวันนี้
-              </button>
-            )}
-          </div>
+          <h2 className="text-lg font-bold">{formatDate(picked)}</h2>
           {error2 && (
             <p role="alert" className="mt-2 rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">
               {error2}
@@ -251,13 +246,10 @@ export function CalendarView() {
           today={now}
           canEdit={canMove}
           onClose={() => setView(null)}
-          onRecord={(planId) => (setRecord({ assetId: view.assetId, planId }), setView(null))}
-          onEditPlan={(plan) => (setEditPlan({ assetId: view.assetId, plan }), setView(null))}
           onOpenJob={(id) => (setRecord({ assetId: view.assetId, id }), setView(null))}
         />
       )}
       {adding && <PlanDialog assetId={null} defaultDue={adding} onClose={(m) => (setAdding(null), m && saved(m))} />}
-      {editPlan && <PlanDialog assetId={editPlan.assetId} plan={editPlan.plan} onClose={(m) => (setEditPlan(null), m && saved(m))} />}
       {record && <WorkOrderDialog assetId={record.assetId} planId={record.planId} workOrderId={record.id} onClose={(ok) => (setRecord(null), ok && saved("บันทึกงานเรียบร้อยแล้ว"))} />}
     </div>
   );

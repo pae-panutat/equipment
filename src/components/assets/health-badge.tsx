@@ -17,14 +17,14 @@ export function HealthBadge({ health }: { health: AssetHealth }) {
   const r = 22;
   const c = 2 * Math.PI * r;
   return (
-    <div className="mt-3 print:hidden">
+    <div className="relative ml-auto print:hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="inline-flex min-h-11 items-center gap-3 rounded-2xl border border-border bg-card/70 py-1.5 pl-2 pr-4 text-left backdrop-blur hover:bg-muted"
+        className="inline-flex min-h-9 items-center gap-2.5 rounded-2xl border border-border bg-card/70 py-1 pl-1.5 pr-3.5 text-left backdrop-blur hover:bg-muted"
       >
-        <svg width="52" height="52" viewBox="0 0 52 52" role="img" aria-label={`คะแนนสุขภาพอุปกรณ์ ${health.score} จาก 100`}>
+        <svg viewBox="0 0 52 52" className="size-10" role="img" aria-label={`คะแนนสุขภาพอุปกรณ์ ${health.score} จาก 100`}>
           <circle cx="26" cy="26" r={r} fill="none" strokeWidth="5" style={{ stroke: "var(--border)" }} />
           <circle
             cx="26"
@@ -48,7 +48,7 @@ export function HealthBadge({ health }: { health: AssetHealth }) {
         </span>
       </button>
       {open && (
-        <ul className="mt-2 grid max-w-md gap-1 rounded-2xl border border-border bg-card/70 p-3 text-sm backdrop-blur">
+        <ul className="absolute right-0 top-full z-20 mt-2 grid w-[min(22rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-border bg-popover p-3 text-sm shadow-xl">
           {health.factors.length === 0 && <li className="text-muted-foreground">ไม่มีปัจจัยที่ทำให้คะแนนลดลง</li>}
           {health.factors.map((f) => (
             <li key={f.label} className="flex justify-between gap-3">

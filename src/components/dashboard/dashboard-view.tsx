@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { ArrowRight, Boxes, ChevronRight, Snowflake } from "lucide-react";
 import { canEditAssets } from "@shared/index";
 import {
   ASSET_STATUSES,
@@ -14,13 +14,15 @@ import {
 } from "@shared/index";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
 import { STATUS_DOT } from "@/components/status-badge";
-import { Card, CardTitle, EmptyState, ErrorState, Skeleton, Stat } from "@/components/ui/card";
+import { Card, CardTitle, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
 import { formatDate, formatDateTime, formatMonth, formatNumber } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
 import { useFresh } from "@/lib/use-fresh";
+import { TONE } from "@/lib/due-tone";
+import { cn } from "@/lib/utils";
 import { NewBadge } from "@/components/ui/new-badge";
-import { CountUp, SegmentBar } from "./charts";
+import { CountUp, StatusDonut } from "./charts";
 import { LineChart, Tooltip, Treemap, useTip, type TreeItem } from "./bento";
 
 export function DashboardView() {
@@ -35,7 +37,7 @@ export function DashboardView() {
         <p className="mt-1 text-muted-foreground">จำนวนอุปกรณ์ สถานะ และงานบำรุงรักษาของส่วนงาน</p>
       </div>
 
-      <Card className="p-4 sm:p-5">
+      <Card className="filter-card p-4 sm:p-5">
         <FilterBar value={filters} onChange={setFilters} />
       </Card>
 
@@ -57,12 +59,12 @@ function DashboardSkeleton() {
 }
 
 const PALETTE: { color: string; ink: "dark" | "light" }[] = [
-  { color: "#7B3FBF", ink: "light" },
-  { color: "#F2C14E", ink: "dark" },
-  { color: "#C77DFF", ink: "dark" },
-  { color: "#FF7A45", ink: "dark" },
-  { color: "#4FD1C5", ink: "dark" },
-  { color: "#FF6FAE", ink: "dark" },
+  { color: "#8B3DFF", ink: "light" },
+  { color: "#7CFF5B", ink: "dark" },
+  { color: "#FFB800", ink: "dark" },
+  { color: "#FF5A1F", ink: "dark" },
+  { color: "#22D3EE", ink: "dark" },
+  { color: "#FF3DA5", ink: "dark" },
 ];
 
 function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Filters; fresh: ReadonlySet<number> }) {
@@ -78,28 +80,67 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
     return <EmptyState title="ไม่พบอุปกรณ์ตามตัวกรองนี้" hint="ลองล้างตัวกรองหรือเลือกส่วนงานอื่น" />;
   }
 
+  const RING: Record<(typeof ASSET_STATUSES)[number], string> = {
+    active: "stroke-green-400",
+    faulty: "stroke-red-400",
+    under_repair: "stroke-amber-400",
+    inactive: "stroke-slate-400",
+    disposed: "stroke-slate-400",
+  };
   const statusSegments = ASSET_STATUSES.map((s) => ({
     label: ASSET_STATUS_LABEL[s],
     value: data.byStatus.find((x) => x.status === s)?.count ?? 0,
     dot: STATUS_DOT[s],
+    stroke: RING[s],
   }));
   const months = data.completedByMonth.map((m) => ({ ...m, label: formatMonth(m.month) }));
-  const treeItems: TreeItem[] = data.byType.map((t, i) => ({ name: t.name, value: t.count, ...PALETTE[i % PALETTE.length] }));
+  // pressing a type opens the register showing only that type (keeping the unit and status filters chosen above)
+  const typeHref = (typeId: number) => {
+    const q = new URLSearchParams({ typeId: String(typeId) });
+    if (filters.unitId) q.set("unitId", filters.unitId);
+    if (filters.status) q.set("status", filters.status);
+    return `/assets?${q}`;
+  };
+  const treeItems: TreeItem[] = data.byType.map((t, i) => ({ name: t.name, value: t.count, href: typeHref(t.id), ...PALETTE[i % PALETTE.length] }));
 
   return (
     <div className="grid gap-4 lg:grid-cols-12">
-      <Card className="flex flex-col lg:col-span-5">
-        <div className="grid grid-cols-2 gap-4">
-          <Stat label="อุปกรณ์ทั้งหมด" value={<CountUp value={data.totals.assets} />} note="รายการ (1 ตัว = 1 รายการ)" />
-          <Stat label="เครื่องปรับอากาศ" value={<CountUp value={data.totals.airConditioners} />} note="ตัว ตามตัวกรองที่เลือก" />
+      <Card className="flex flex-col overflow-hidden p-0 sm:p-0 lg:col-span-5">
+        {/* the headline numbers on a coloured band */}
+        <div className="relative overflow-hidden bg-[image:var(--grad)] px-5 py-5 text-primary-foreground sm:px-6">
+          <span className="pointer-events-none absolute -right-8 -top-10 size-36 rounded-full bg-primary-foreground/10" aria-hidden="true" />
+          <span className="pointer-events-none absolute -bottom-12 right-20 size-28 rounded-full bg-primary-foreground/10" aria-hidden="true" />
+          <div className="relative grid grid-cols-2 gap-4">
+            {[
+              { icon: Boxes, label: "อุปกรณ์ทั้งหมด", value: data.totals.assets, note: "รายการ (1 ตัว = 1 รายการ)" },
+              { icon: Snowflake, label: "เครื่องปรับอากาศ", value: data.totals.airConditioners, note: "ตัว ตามตัวกรองที่เลือก" },
+            ].map((t) => (
+              <div key={t.label} className="min-w-0">
+                <span className="inline-flex items-center gap-2 text-sm opacity-90">
+                  <span className="grid size-7 place-items-center rounded-lg bg-primary-foreground/20">
+                    <t.icon className="size-4" aria-hidden="true" />
+                  </span>
+                  {t.label}
+                </span>
+                <div className="tabular mt-2 text-[44px] font-bold leading-none tracking-[-0.02em]">
+                  <CountUp value={t.value} />
+                </div>
+                <div className="mt-1.5 text-xs opacity-85">{t.note}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="mt-6">
-          <CardTitle className="mb-3 text-[15px]">สถานะอุปกรณ์</CardTitle>
-          <SegmentBar segments={statusSegments} />
+
+        <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
+          <CardTitle className="text-[15px]">สถานะอุปกรณ์</CardTitle>
+          <StatusDonut segments={statusSegments} />
+          <Link
+            href={acLink}
+            className="mt-auto inline-flex min-h-9 items-center justify-between gap-2 rounded-xl bg-primary-soft px-3.5 text-sm font-bold text-primary transition-colors hover:bg-muted"
+          >
+            ดูแอร์ในทะเบียนอุปกรณ์ <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
         </div>
-        <Link href={acLink} className="mt-auto inline-flex min-h-11 items-center gap-2 pt-5 text-[15px] font-bold text-primary hover:underline">
-          ดูแอร์ในทะเบียนอุปกรณ์ <ArrowRight className="size-4" aria-hidden="true" />
-        </Link>
       </Card>
 
       <Card className="flex flex-col lg:col-span-7">
@@ -135,10 +176,10 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
             {data.byType.map((t, i) => (
               <tr key={t.id} className="border-t border-border">
                 <td className="py-2.5">
-                  <span className="inline-flex items-center gap-2">
+                  <Link href={typeHref(t.id)} className="inline-flex items-center gap-2 hover:underline">
                     <i className="size-2.5 rounded-[3px]" style={{ background: PALETTE[i % PALETTE.length].color }} aria-hidden="true" />
                     {t.name}
-                  </span>
+                  </Link>
                 </td>
                 <td className="tabular py-2.5 text-right font-bold">{formatNumber(t.count)}</td>
                 <td className="tabular py-2.5 text-right text-muted-foreground">{Math.round((t.count / data.totals.assets) * 100)}%</td>
@@ -186,7 +227,16 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
                       <td className="text-right">
                         <Link href={href} tabIndex={-1} aria-hidden="true" className={cell}>
                           <span className="tabular block">{formatDate(u.dueDate)}</span>
-                          <span className={`text-xs font-bold ${u.overdue ? "text-bad" : "text-warn"}`}>{u.overdue ? "เกินกำหนด" : "ใกล้ครบกำหนด"}</span>
+                          {(() => {
+                            const days = Math.round((Date.parse(`${u.dueDate}T00:00:00Z`) - Date.parse(`${data.asOf}T00:00:00Z`)) / 86_400_000);
+                            const tone = u.overdue ? TONE.overdue : TONE.soon;
+                            return (
+                              <span className={cn("mt-0.5 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold", tone.chip)}>
+                                <i className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden="true" />
+                                {u.overdue ? `เกินกำหนด ${Math.abs(days)} วัน` : days === 0 ? "ครบกำหนดวันนี้" : `ใกล้ครบกำหนด อีก ${days} วัน`}
+                              </span>
+                            );
+                          })()}
                         </Link>
                       </td>
                       <td className="text-right">

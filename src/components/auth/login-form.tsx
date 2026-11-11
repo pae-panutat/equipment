@@ -26,20 +26,20 @@ export function LoginForm() {
   const { data: cfg } = useApi<AuthConfig>("/auth/config");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  // Keep the box ticked once the person has ticked it (per browser). Read after mount so server and browser render the same HTML.
+  // Signed in for good (a year since the last visit, renewed each time the site is used) is the default, so a phone that scans a QR
+  // code stays signed in. The box is un-ticked only for a shared computer, and that choice is kept per browser.
+  const [remember, setRemember] = useState(true);
   useEffect(() => {
     try {
-      if (localStorage.getItem("remember-me") === "1") setRemember(true);
+      if (localStorage.getItem("remember-me") === "0") setRemember(false);
     } catch {
-      /* storage can be unavailable (private mode): the box simply starts unticked */
+      /* storage can be unavailable (private mode): the box simply stays ticked */
     }
   }, []);
   const changeRemember = (on: boolean) => {
     setRemember(on);
     try {
-      if (on) localStorage.setItem("remember-me", "1");
-      else localStorage.removeItem("remember-me");
+      localStorage.setItem("remember-me", on ? "1" : "0");
     } catch {
       /* ignore */
     }
@@ -81,18 +81,18 @@ export function LoginForm() {
             และงานซ่อมบำรุง
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">CMU Asset &amp; Maintenance</p>
-          <ul className="mt-8 grid max-w-md gap-3">
+          <ul className="mt-6 grid max-w-sm gap-1.5">
             {[
               { Icon: Boxes, text: "ทะเบียนอุปกรณ์ทุกส่วนงาน ค้นหาได้ทันที" },
               { Icon: ScanQrCode, text: "สแกน QR Code เปิดข้อมูลอุปกรณ์ได้ที่หน้างาน" },
               { Icon: ClipboardCheck, text: "แผนบำรุงรักษาและใบงาน แจ้งเตือนก่อนครบกำหนด" },
               { Icon: Activity, text: "ภาพรวมและรายการใหม่อัปเดตสด" },
             ].map(({ Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 rounded-2xl border border-border bg-card/50 px-4 py-3 backdrop-blur-md">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                  <Icon className="size-[18px]" aria-hidden="true" />
+              <li key={text} className="flex items-center gap-2.5 rounded-xl border border-border bg-card/50 px-3 py-1.5 backdrop-blur-md">
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary">
+                  <Icon className="size-4" aria-hidden="true" />
                 </span>
-                <span className="text-[15px]">{text}</span>
+                <span className="text-sm">{text}</span>
               </li>
             ))}
           </ul>

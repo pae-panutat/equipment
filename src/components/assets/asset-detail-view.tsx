@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Download, Pencil, Plus } from "lucide-react";
+import { Download, Pencil, Plus } from "lucide-react";
 import {
   PRIORITY_LABEL,
   WORK_ORDER_KIND_LABEL,
@@ -16,6 +16,8 @@ import {
 import { AssetEditDialog } from "@/components/assets/asset-edit-dialog";
 import { AssetPhotos } from "@/components/assets/asset-photos";
 import { HealthBadge } from "@/components/assets/health-badge";
+import { BackLink } from "@/components/ui/back-link";
+import { IconButton } from "@/components/ui/icon-button";
 import { AssetHistory } from "@/components/history/asset-history";
 import { PlanDialog } from "@/components/assets/plan-dialog";
 import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
@@ -113,18 +115,20 @@ export function AssetDetailView({ id }: { id: string }) {
   return (
     <div className="grid gap-6">
       <div className="print:hidden">
-        <Link href="/assets" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" aria-hidden="true" />
-          ทะเบียนอุปกรณ์
-        </Link>
-        <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-[28px] font-bold tracking-[-0.02em]">{a.name}</h1>
-          <StatusBadge status={a.status} />
+        <BackLink href="/assets">ทะเบียนอุปกรณ์</BackLink>
+        {/* the name and its details on the left; the health score at the right end, level with the name */}
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-[28px] font-bold tracking-[-0.02em]">{a.name}</h1>
+              <StatusBadge status={a.status} />
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              รหัส {a.code} · {a.type} · {a.unit}
+            </p>
+          </div>
+          {a.health && <HealthBadge health={a.health} />}
         </div>
-        <p className="mt-1 text-muted-foreground">
-          รหัส {a.code} · {a.type} · {a.unit}
-        </p>
-        {a.health && <HealthBadge health={a.health} />}
       </div>
 
       <AssetPhotos assetId={a.id} images={a.images} canEdit={canRecord} onChanged={reload} />
@@ -162,21 +166,14 @@ export function AssetDetailView({ id }: { id: string }) {
           </dl>
         </Card>
 
-        <Card className="hidden h-fit text-center sm:block print:block print:border-0 print:p-0 print:shadow-none">
+        <Card className="relative hidden h-fit text-center sm:block print:block print:border-0 print:p-0 print:shadow-none">
+          <IconButton className="absolute right-3 top-3" label="บันทึก QR Code เป็นรูปภาพ (PNG)" icon={Download} onClick={() => void saveQr(a.id, a.code)} />
           <CardTitle className="print:hidden">QR Code อุปกรณ์</CardTitle>
           {/* always black on white (set by the server) so it scans in both themes and on paper */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${API_PREFIX}/assets/${a.id}/qr.svg`} alt={`QR Code ของ ${a.code}`} width={240} height={240} className="mx-auto mt-3 rounded-xl bg-white" />
           <p className="mt-2 text-lg font-bold">{a.code}</p>
           <p className="text-sm text-muted-foreground print:text-black">{a.name}</p>
-          <button
-            type="button"
-            onClick={() => void saveQr(a.id, a.code)}
-            className="text-sm mt-4 inline-flex min-h-9 items-center gap-2 rounded-xl border border-border px-3.5 hover:bg-muted print:hidden"
-          >
-            <Download className="size-4" aria-hidden="true" />
-            Save QR Code
-          </button>
         </Card>
       </div>
 
