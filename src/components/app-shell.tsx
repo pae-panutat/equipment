@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Boxes, Database, LayoutDashboard, LogOut, Menu, Wrench, X } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
+import { RailTip } from "@/components/ui/rail-tip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar, UserIcon } from "@/components/ui/user-icon";
 import { useAuth } from "@/lib/auth";
@@ -37,17 +38,17 @@ function NavLinks({ onNavigate, compact = false }: { onNavigate?: () => void; co
           {g.items.map(({ href, label, icon: Icon }) => {
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
+              <RailTip key={href} label={label} icon={Icon} enabled={compact}>
               <Link
-                key={href}
                 href={href}
                 onClick={onNavigate}
-                title={compact ? label : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(row, active ? "bg-primary-soft font-bold text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
               >
                 <Icon className="size-[18px] shrink-0" aria-hidden="true" />
                 <span className={compact ? "sr-only" : undefined}>{label}</span>
               </Link>
+              </RailTip>
             );
           })}
         </div>
@@ -118,38 +119,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="เมนูด้านข้าง"
       >
         {collapsed ? (
-          // folded: no hamburger. The purple wrench (the logo) is the button that opens the sidebar again
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            aria-label="ขยายเมนูด้านข้าง"
-            aria-expanded={false}
-            title="ขยายเมนู"
-            className="mx-auto grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            <Wrench className="size-5" aria-hidden="true" />
-          </button>
-        ) : (
-          <div className="flex items-center justify-between gap-2">
-            <Brand />
-            {/* the standard "hamburger" button, after the brand at the right edge: folds the sidebar */}
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              aria-label="หุบเมนูด้านข้าง"
-              aria-expanded
-              title="หุบเมนู"
-              className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Menu className="size-6" aria-hidden="true" />
-            </button>
+          // folded: just the purple logo, which goes to the home page
+          <div className="flex flex-col items-center">
+            <RailTip label="CMU Asset · หน้าแรก" icon={Wrench}>
+              <Link
+                href="/"
+                aria-label="CMU Asset Maintenance — หน้าแรก"
+                className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                <Wrench className="size-5" aria-hidden="true" />
+              </Link>
+            </RailTip>
           </div>
+        ) : (
+          <Brand />
         )}
         <NavLinks compact={collapsed} />
       </aside>
 
       <div className="min-w-0">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur lg:px-8 print:hidden">
+          {/* desktop: the hamburger at the left end of the top bar folds / opens the sidebar */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={collapsed ? "ขยายเมนูด้านข้าง" : "หุบเมนูด้านข้าง"}
+            aria-expanded={!collapsed}
+            className="hidden size-11 shrink-0 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:-ml-2.5 lg:grid"
+          >
+            <Menu className="size-6" aria-hidden="true" />
+          </button>
           {/* phone only: the sidebar is not there, so the same button opens the menu as a dropdown */}
           <button
             type="button"

@@ -147,3 +147,15 @@ summary {
 @media (prefers-reduced-motion: reduce) {
   .loadbar-stripe { animation: none; width: 100%; opacity: 0.7; }
 }
+
+/* Dimmed page area while a folded-sidebar item is hovered */
+@keyframes railfade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.railfade {
+  animation: railfade 0.15s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .railfade { animation: none; }
+}
