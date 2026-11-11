@@ -145,6 +145,27 @@ export type AssetDetail = {
   inProgressJobs: number;
   plans: { id: number; title: string; intervalValue: number; intervalUnit: IntervalUnit; nextDueDate: string | null; active: boolean }[];
   workOrders: WorkOrderItem[];
+  /** null for an asset that has been disposed of. */
+  health: AssetHealth | null;
+};
+
+/** A 0-100 score for how much attention an asset needs, with the reasons it lost points. */
+export type AssetHealth = { score: number; level: "good" | "fair" | "watch" | "replace"; factors: { label: string; points: number }[] };
+
+/** Something that falls due on a calendar day: a maintenance plan, or a job that is still open. */
+export type CalendarItem = { kind: "plan" | "job"; id: number; assetId: number; assetCode: string; assetName: string; title: string; date: string };
+
+/** One line of the edit history. `changes` maps a field to [before, after]. */
+export type HistoryItem = {
+  id: number;
+  at: string;
+  username: string;
+  entity: string;
+  assetId: number | null;
+  assetCode: string | null;
+  action: string;
+  summary: string;
+  changes: Record<string, [unknown, unknown]> | null;
 };
 
 export type Paged<T> = { items: T[]; page: number; pageSize: number; total: number };

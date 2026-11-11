@@ -26,6 +26,13 @@ import { allLocations, allowedUnitIds, assetScope, rangeQuery, rows, scopeQuery 
 import { authorizedAsset, contentVersion } from "./asset-access";
 import { newQrToken, qrSvg, scanUrl } from "./qr";
 import { assetImagesRouter, relocateAssetImages } from "./asset-images";
+import { plansRouter } from "./plans";
+import { historyRouter } from "./history";
+import { calendarRouter } from "./calendar";
+import { reportsRouter } from "./reports";
+import { assetImportRouter } from "./asset-import";
+import { audit, diff } from "./audit";
+import { assetHealth, twelveMonthsAgo } from "./health";
 import { WORK_ORDER_VERSION_KEYS, workOrdersRouter } from "./work-orders";
 
 export const dataRouter = Router();
@@ -260,13 +267,21 @@ dataRouter.get("/assets/:id", async (req, res) => {
     sql`SELECT id, width, height FROM asset_images WHERE asset_id = ${id.data} ORDER BY id`,
   );
 
+  const [repairs] = await rows<{ n: number }>(
+    sql`SELECT COUNT(*) AS n FROM work_orders WHERE asset_id = ${id.data} AND kind = 'repair' AND status = 'done' AND performed_on >= ${twelveMonthsAgo(bangkokToday())}`,
+  );
+  const health = assetHealth({
+    today: bangkokToday(), status: a.status, installDate: a.install_date, purchaseDate: a.purchase_date, warrantyEnd: a.warranty_end,
+    repairsLast12Months: Number(repairs?.n ?? 0), hasOverduePlan: plans.some((p) => p.active === 1 && p.next_due_date !== null && p.next_due_date < bangkokToday()),
+  });
+
   const path = await locationPath();
   const body: AssetDetail = {
     id: a.id, typeId: a.type_id, ownerUnitId: a.owner_unit_id, locationId: a.location_id, version: versionOf(a), code: a.code, legacyAssetNo: a.legacy_asset_no, name: a.name, type: a.type, brand: a.brand, model: a.model,
     serialNumber: a.serial_number, status: a.status, unit: a.unit, location: path(a.location_id), locationDetail: a.location_detail,
     purchaseDate: a.purchase_date, installDate: a.install_date, warrantyEnd: a.warranty_end, notes: a.notes,
     plans: plans.map((p) => ({ id: p.id, title: p.title, intervalValue: p.interval_value, intervalUnit: p.interval_unit, nextDueDate: p.next_due_date, active: p.active === 1 })),
-    images, inProgressJobs: Number(counts?.in_progress ?? 0),
+    images, inProgressJobs: Number(counts?.in_progress ?? 0), health,
     workOrders: orders.map((o) => ({
       id: o.id, number: o.number, title: o.title, kind: o.kind, status: o.status, priority: o.priority, description: o.description,
       planId: o.plan_id, dueDate: o.due_date, performedOn: o.performed_on,
@@ -377,16 +392,19 @@ dataRouter.patch("/assets/:id", requireRole(...ASSET_EDIT_ROLES), async (req, re
 
   // Optimistic lock: refuse if the editable fields changed after the editor opened the record.
   const set: Partial<typeof assets.$inferInsert> = { ...changes };
+  let before: Record<string, unknown> = {};
   const result = await db.transaction(async (tx) => {
     // must run on the transaction's own connection (tx), otherwise FOR UPDATE would not hold the row lock
     const [locked] = (await tx.execute(sql`SELECT ${VERSION_COLUMNS} FROM assets a WHERE a.id = ${asset.id} FOR UPDATE`)) as unknown as [object[]];
     if (!locked[0] || versionOf(locked[0]) !== expectedVersion) return "stale" as const;
+    before = { ...locked[0] } as Record<string, unknown>;
     await tx.update(assets).set(set).where(eq(assets.id, asset.id));
     return "ok" as const;
   });
   if (result === "stale") {
     return void res.status(409).json({ error: { code: "conflict", message: "ข้อมูลนี้ถูกแก้ไขโดยผู้อื่นไปแล้ว กรุณาปิดหน้าต่างแล้วเปิดใหม่เพื่อดูข้อมูลล่าสุด" } });
   }
+  await audit(user, { entity: "asset", entityId: asset.id, assetId: asset.id, action: "update", summary: "แก้ไขข้อมูลอุปกรณ์", changes: diff(before, changes) });
   if (changes.ownerUnitId !== undefined) await relocateAssetImages(asset.id).catch((e) => console.error("photo relocation failed", e)); // photo files follow the asset to its new unit folder
   res.json({ ok: true });
 });
@@ -430,6 +448,7 @@ dataRouter.post("/assets", requireRole(...ASSET_EDIT_ROLES), async (req, res) =>
         warrantyEnd: b.warrantyEnd ?? null, notes: b.notes ?? null, qrToken: newQrToken(), // its QR code exists from the start
       })
       .$returningId();
+    await audit(user, { entity: "asset", entityId: row.id, assetId: row.id, action: "create", summary: `เพิ่มอุปกรณ์ ${b.code}: ${b.name}` });
     res.status(201).json({ id: row.id, code: b.code });
   } catch (err) {
     if (isDuplicateKey(err)) return bad(409, "duplicate", "รหัสอุปกรณ์นี้มีอยู่แล้ว กรุณาใช้รหัสอื่น");
@@ -454,4 +473,9 @@ dataRouter.get("/meta/next-asset-code", requireRole(...ASSET_EDIT_ROLES), async 
 });
 
 dataRouter.use(workOrdersRouter);
+dataRouter.use(plansRouter);
+dataRouter.use(historyRouter);
+dataRouter.use(calendarRouter);
+dataRouter.use(reportsRouter);
+dataRouter.use(assetImportRouter);
 dataRouter.use(assetImagesRouter);

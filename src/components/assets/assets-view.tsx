@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Plus, Wrench } from "lucide-react";
+import { FileUp, Plus, Printer, Wrench } from "lucide-react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { canEditAssets, type AssetListItem, type Paged } from "@shared/index";
 import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
 import { AssetCreateDialog } from "@/components/assets/asset-create-dialog";
+import { AssetCodeLink } from "@/components/assets/asset-hover-card";
 import { AssetEditDialog } from "@/components/assets/asset-edit-dialog";
-import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
 import { QrCell } from "@/components/assets/qr-cell";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
@@ -23,13 +23,26 @@ import { cn } from "@/lib/utils";
 type SortKey = "code" | "name" | "status" | "nextDue";
 const PAGE_SIZE = 20;
 
+/** The wrench behind an asset code: opens the asset's page (where work is recorded). */
+function OpenAsset({ id, code }: { id: number; code: string }) {
+  return (
+    <Link
+      href={`/assets/${id}`}
+      aria-label={`เปิดหน้าอุปกรณ์ ${code}`}
+      title="เปิดหน้าอุปกรณ์"
+      className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+      <Wrench className="size-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
 export function AssetsView() {
   const sp = useSearchParams();
   const { user } = useAuth();
   const canEdit = user ? canEditAssets(user.role) : false; // the server enforces this too
   const [editingId, setEditingId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false); // the "add asset" dialog
-  const [recordingId, setRecordingId] = useState<number | null>(null); // record maintenance work for this asset
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({
     ...EMPTY_FILTERS,
@@ -79,6 +92,24 @@ export function AssetsView() {
 
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
+  // ticked rows (kept while paging) for printing QR labels together
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const toggle = (id: number) =>
+    setPicked((p) => {
+      const n = new Set(p);
+      if (!n.delete(id)) n.add(id);
+      return n;
+    });
+  const pageIds = data?.items.map((a) => a.id) ?? [];
+  const allOnPage = pageIds.length > 0 && pageIds.every((i) => picked.has(i));
+  const togglePage = () =>
+    setPicked((p) => {
+      const n = new Set(p);
+      for (const i of pageIds) allOnPage ? n.delete(i) : n.add(i);
+      return n;
+    });
+  const tick = "size-3.5 shrink-0 accent-[var(--primary)]";
+
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -86,16 +117,41 @@ export function AssetsView() {
           <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">ทะเบียนอุปกรณ์</h1>
         </div>
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90"
-          >
-            <Plus className="size-5" aria-hidden="true" />
-            เพิ่มอุปกรณ์
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/assets/import" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 font-bold hover:bg-muted">
+              <FileUp className="size-5" aria-hidden="true" />
+              นำเข้าจากไฟล์
+            </Link>
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90"
+            >
+              <Plus className="size-5" aria-hidden="true" />
+              เพิ่มอุปกรณ์
+            </button>
+          </div>
         )}
       </div>
+
+      {picked.size > 0 && (
+        <div role="status" className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-card/95 px-4 py-2.5 shadow-lg backdrop-blur">
+          <span className="text-sm">
+            เลือกแล้ว <b>{picked.size}</b> รายการ{picked.size > 200 && <span className="text-bad"> (พิมพ์ได้ครั้งละไม่เกิน 200)</span>}
+          </span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setPicked(new Set())} className="min-h-11 rounded-xl px-3 text-sm hover:bg-muted">
+              ล้างที่เลือก
+            </button>
+            {picked.size <= 200 && (
+              <Link href={`/assets/labels?ids=${[...picked].join(",")}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 font-bold text-primary-foreground hover:opacity-90">
+                <Printer className="size-4" aria-hidden="true" />
+                พิมพ์ป้าย QR
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       <Card className="grid gap-4 p-4 sm:p-5">
         <label className="relative block">
@@ -165,21 +221,23 @@ export function AssetsView() {
             {data?.items.map((a) => (
               <li key={a.id} className={cn("rounded-2xl border border-border bg-card p-4", fresh.has(a.id) && "fresh")}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <Link href={`/assets/${a.id}`} className="font-bold text-primary underline-offset-2 hover:underline">
-                      {a.code}
-                    </Link>
-                    {fresh.has(a.id) && <NewBadge />}
+                  <input type="checkbox" className={`${tick} mt-0.5`} checked={picked.has(a.id)} onChange={() => toggle(a.id)} aria-label={`เลือก ${a.code} เพื่อพิมพ์ป้าย QR`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-1">
+                      <AssetCodeLink id={a.id} code={a.code} className="font-bold text-primary underline-offset-2 hover:underline" />
+                      {canEdit && <OpenAsset id={a.id} code={a.code} />}
+                      {fresh.has(a.id) && <NewBadge />}
+                    </div>
                     <div className="mt-0.5 break-words text-[15px] font-bold leading-snug">{a.name}</div>
                   </div>
                   <div className="shrink-0 pt-0.5">
                     <StatusBadge status={a.status} />
                   </div>
                 </div>
-                <div className="mt-1.5 break-words text-sm leading-snug text-muted-foreground">
+                <div className="mt-1 break-words text-xs leading-snug text-muted-foreground">
                   {[a.brand, a.model].filter(Boolean).join(" ") || "—"} · {a.type}
                 </div>
-                <div className="mt-0.5 break-words text-sm leading-snug text-muted-foreground">
+                <div className="mt-0.5 break-words text-xs leading-snug text-muted-foreground">
                   {a.unit} · {a.location ?? "ยังไม่ระบุที่ตั้ง"}
                 </div>
                 <div className="mt-3 flex items-end justify-between gap-3 border-t border-border pt-3">
@@ -195,17 +253,6 @@ export function AssetsView() {
                   </dl>
                   <div className="flex shrink-0 items-center">
                     <QrCell asset={a} />
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => setRecordingId(a.id)}
-                        aria-label={`บันทึกงานซ่อมบำรุง ${a.code}`}
-                        title="บันทึกงานซ่อมบำรุง"
-                        className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <Wrench className="size-4" aria-hidden="true" />
-                      </button>
-                    )}
                   </div>
                 </div>
               </li>
@@ -216,7 +263,10 @@ export function AssetsView() {
             <table className="w-full min-w-[940px] text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
-                  <th className="px-4 py-3 font-normal">QR / บันทึกงาน</th>
+                  <th className="w-10 py-3 pl-4 pr-0 font-normal">
+                    <input type="checkbox" className={tick} checked={allOnPage} onChange={togglePage} aria-label="เลือกทั้งหน้านี้เพื่อพิมพ์ป้าย QR" />
+                  </th>
+                  <th className="px-4 py-3 font-normal">QR</th>
                   <Th label="รหัส" k="code" sort={sort} dir={dir} onSort={toggleSort} />
                   <Th label="ชื่อ / ยี่ห้อ รุ่น" k="name" sort={sort} dir={dir} onSort={toggleSort} />
                   <th className="px-4 py-3 font-normal">ส่วนงาน / ที่ตั้ง</th>
@@ -229,7 +279,7 @@ export function AssetsView() {
                 {loading && !data &&
                   Array.from({ length: 6 }, (_, i) => (
                     <tr key={i} className="border-b border-border">
-                      <td colSpan={7} className="px-4 py-3">
+                      <td colSpan={8} className="px-4 py-3">
                         <Skeleton className="h-9" />
                       </td>
                     </tr>
@@ -250,37 +300,28 @@ export function AssetsView() {
                       if (canEdit && e.key === "Enter" && e.target === e.currentTarget) setEditingId(a.id);
                     }}
                   >
-                    <td className="px-4 py-1.5">
-                      <div className="flex items-center gap-1">
-                        <QrCell asset={a} />
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => setRecordingId(a.id)}
-                            aria-label={`บันทึกงานซ่อมบำรุง ${a.code}`}
-                            title="บันทึกงานซ่อมบำรุง"
-                            className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <Wrench className="size-4" aria-hidden="true" />
-                          </button>
-                        )}
-                      </div>
+                    <td className="w-10 py-1.5 pl-4 pr-0">
+                      <input type="checkbox" className={tick} checked={picked.has(a.id)} onChange={() => toggle(a.id)} aria-label={`เลือก ${a.code} เพื่อพิมพ์ป้าย QR`} />
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-bold">
-                      <Link href={`/assets/${a.id}`} className="text-primary underline-offset-2 hover:underline">
-                        {a.code}
-                      </Link>
-                      {fresh.has(a.id) && <NewBadge />}
+                    <td className="px-4 py-1.5">
+                      <QrCell asset={a} />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-1.5 font-bold">
+                      <div className="flex items-center gap-1">
+                        <AssetCodeLink id={a.id} code={a.code} className="text-primary underline-offset-2 hover:underline" />
+                        {canEdit && <OpenAsset id={a.id} code={a.code} />}
+                        {fresh.has(a.id) && <NewBadge />}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <div>{a.name}</div>
-                      <div className="text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">
                         {[a.brand, a.model].filter(Boolean).join(" ") || "—"} · {a.type}
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div>{a.unit}</div>
-                      <div className="text-muted-foreground">{a.location ?? "ยังไม่ระบุที่ตั้ง"}</div>
+                      <div className="text-xs text-muted-foreground">{a.location ?? "ยังไม่ระบุที่ตั้ง"}</div>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={a.status} />
@@ -328,19 +369,6 @@ export function AssetsView() {
               reload();
               setSavedNote(`เพิ่มอุปกรณ์ ${created.code} เรียบร้อยแล้ว`);
               setTimeout(() => setSavedNote(null), 6000);
-            }
-          }}
-        />
-      )}
-      {recordingId !== null && (
-        <WorkOrderDialog
-          assetId={recordingId}
-          onClose={(saved) => {
-            setRecordingId(null);
-            if (saved) {
-              reload(); // the "last maintenance" column changes
-              setSavedNote("บันทึกงานซ่อมบำรุงเรียบร้อยแล้ว");
-              setTimeout(() => setSavedNote(null), 5000);
             }
           }}
         />

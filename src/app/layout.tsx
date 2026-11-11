@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { LoadingBar } from "@/components/loading-bar";
+import { Pwa } from "@/components/pwa";
 import { AppShell } from "@/components/app-shell";
 import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
   description: "ระบบทะเบียนอุปกรณ์และติดตามการบำรุงรักษา",
 };
 
+export const viewport: Viewport = { themeColor: "#7c3aed" };
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" className={`${lineSeed.variable} dark`} suppressHydrationWarning>
@@ -31,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")==="light")document.documentElement.classList.remove("dark")}catch(e){}` }} />
       </head>
       <body>
+        <Pwa />
         <LoadingBar />
         <AuthProvider>
           <AppShell>{children}</AppShell>

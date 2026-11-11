@@ -15,6 +15,9 @@ import {
 } from "@shared/index";
 import { AssetEditDialog } from "@/components/assets/asset-edit-dialog";
 import { AssetPhotos } from "@/components/assets/asset-photos";
+import { HealthBadge } from "@/components/assets/health-badge";
+import { AssetHistory } from "@/components/history/asset-history";
+import { PlanDialog } from "@/components/assets/plan-dialog";
 import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardTitle, EmptyState, ErrorState, Skeleton } from "@/components/ui/card";
@@ -83,6 +86,7 @@ export function AssetDetailView({ id }: { id: string }) {
   const canRecord = user ? canEditAssets(user.role) : false; // only a Super Admin or Technician may record work (the server enforces it too)
   const [dialog, setDialog] = useState<{ id?: number; planId?: number } | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [planDialog, setPlanDialog] = useState<{ plan?: AssetDetail["plans"][number] } | null>(null); // add / change a maintenance plan
   // Arriving from the dashboard: ?plan=<id> opens the record form for that plan, ?job=<id> opens that job. Only for those who may record.
   const router = useRouter();
   const pathname = usePathname();
@@ -120,6 +124,7 @@ export function AssetDetailView({ id }: { id: string }) {
         <p className="mt-1 text-muted-foreground">
           รหัส {a.code} · {a.type} · {a.unit}
         </p>
+        {a.health && <HealthBadge health={a.health} />}
       </div>
 
       <AssetPhotos assetId={a.id} images={a.images} canEdit={canRecord} onChanged={reload} />
@@ -176,10 +181,22 @@ export function AssetDetailView({ id }: { id: string }) {
       </div>
 
       <Card className="print:hidden">
-        <CardTitle>แผนบำรุงรักษา</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle>แผนบำรุงรักษา</CardTitle>
+          {canRecord && (
+            <button
+              type="button"
+              onClick={() => setPlanDialog({})}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 font-bold hover:bg-muted"
+            >
+              <Plus className="size-5" aria-hidden="true" />
+              เพิ่มแผน
+            </button>
+          )}
+        </div>
         <div className="mt-3">
           {a.plans.length === 0 ? (
-            <EmptyState title="ยังไม่มีแผนบำรุงรักษา" />
+            <EmptyState title="ยังไม่มีแผนบำรุงรักษา" hint={canRecord ? "กดปุ่ม เพิ่มแผน เพื่อกำหนดรอบการบำรุงรักษา" : undefined} />
           ) : (
             <ul className="divide-y divide-border">
               {a.plans.map((p) => (
@@ -191,7 +208,20 @@ export function AssetDetailView({ id }: { id: string }) {
                       {p.active ? "" : " · ปิดใช้งาน"}
                     </div>
                   </div>
-                  <div className="text-sm">ครบกำหนด {p.nextDueDate ? formatDate(p.nextDueDate) : "—"}</div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span>ครบกำหนด {p.nextDueDate ? formatDate(p.nextDueDate) : "—"}</span>
+                    {canRecord && (
+                      <button
+                        type="button"
+                        onClick={() => setPlanDialog({ plan: p })}
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-primary hover:bg-primary-soft"
+                        aria-label={`แก้ไขแผน ${p.title}`}
+                      >
+                        <Pencil className="size-4" aria-hidden="true" />
+                        แก้ไข
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -303,6 +333,23 @@ export function AssetDetailView({ id }: { id: string }) {
               reload(); // title, badge and the information card show the new values
               setInfoNote("บันทึกการแก้ไขข้อมูลอุปกรณ์เรียบร้อยแล้ว");
               setTimeout(() => setInfoNote(null), 5000);
+            }
+          }}
+        />
+      )}
+
+      <AssetHistory assetId={a.id} />
+
+      {planDialog && (
+        <PlanDialog
+          assetId={a.id}
+          plan={planDialog.plan}
+          onClose={(saved) => {
+            setPlanDialog(null);
+            if (saved) {
+              reload();
+              setNote(saved);
+              setTimeout(() => setNote(null), 5000);
             }
           }}
         />

@@ -6,6 +6,7 @@ import { ASSET_EDIT_ROLES, ASSET_STATUSES, assetStatusProblem, autoAssetStatus, 
 import { requireRole } from "./auth/guard";
 import { authorizedAsset, contentVersion } from "./asset-access";
 import { addDays, addMonths, bangkokToday } from "./dates";
+import { audit, diff } from "./audit";
 import { db } from "./db";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -134,6 +135,7 @@ workOrdersRouter.post("/assets/:id/work-orders", requireRole(...ASSET_EDIT_ROLES
         await syncAssetStatus(tx, asset.id, b.assetStatus);
         return { id: row.id, number };
       });
+      await audit(req.user!, { entity: "work_order", entityId: created.id, assetId: asset.id, action: "create", summary: `บันทึกใบงาน ${created.number}: ${b.title}` });
       return void res.status(201).json(created);
     } catch (err) {
       if (err instanceof StatusConflict) return fail(res, 400, "status_conflict", err.message);
@@ -151,8 +153,8 @@ workOrdersRouter.patch("/work-orders/:id", requireRole(...ASSET_EDIT_ROLES), asy
   const { expectedVersion, assetStatus, ...changes } = parsed.data;
   if (Object.keys(changes).length === 0 && !assetStatus) return fail(res, 400, "validation_error", "ไม่มีข้อมูลที่เปลี่ยนแปลง");
 
-  const [cur] = ((await db.execute(sql`SELECT w.asset_id, w.status, w.performed_on, w.plan_id FROM work_orders w WHERE w.id = ${id.data}`)) as unknown as [
-    { asset_id: number; status: WorkOrderStatus; performed_on: string | null; plan_id: number | null }[],
+  const [cur] = ((await db.execute(sql`SELECT w.asset_id, w.number, w.status, w.performed_on, w.plan_id, w.title, w.kind, w.description, w.priority, w.due_date FROM work_orders w WHERE w.id = ${id.data}`)) as unknown as [
+    { asset_id: number; number: string; status: WorkOrderStatus; performed_on: string | null; plan_id: number | null; title: string; kind: string; description: string | null; priority: string; due_date: string | null }[],
   ])[0];
   if (!cur) return fail(res, 404, "not_found", "ไม่พบรายการงาน");
   const asset = await authorizedAsset(res, req.user!, sql`a.id = ${cur.asset_id}`);
@@ -188,5 +190,8 @@ workOrdersRouter.patch("/work-orders/:id", requireRole(...ASSET_EDIT_ROLES), asy
     throw err;
   }
   if (result === "stale") return fail(res, 409, "conflict", "รายการนี้ถูกแก้ไขโดยผู้อื่นไปแล้ว กรุณาปิดหน้าต่างแล้วเปิดใหม่เพื่อดูข้อมูลล่าสุด");
+  const { completedAt: _done, ...shown } = set;
+  void _done;
+  await audit(req.user!, { entity: "work_order", entityId: id.data, assetId: asset.id, action: "update", summary: `แก้ไขใบงาน ${cur.number}`, changes: diff(cur, shown) });
   res.json({ ok: true });
 });

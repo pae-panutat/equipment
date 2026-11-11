@@ -7,6 +7,7 @@ import { z } from "zod";
 import { assetImages } from "../db/schema";
 import { ASSET_EDIT_ROLES, IMAGE_MAX_BYTES, MAX_IMAGES_PER_ASSET, THUMB_MAX_BYTES } from "../shared";
 import { requireRole } from "./auth/guard";
+import { audit } from "./audit";
 import { authorizedAsset } from "./asset-access";
 import { config } from "./config";
 import { db } from "./db";
@@ -118,6 +119,7 @@ assetImagesRouter.post("/assets/:id/images", requireRole(...ASSET_EDIT_ROLES), a
       if (oldDir) for (const name of [old.fileName, old.thumbName]) if (NAME.test(name)) await fs.rm(path.join(oldDir, name), { force: true });
       if (old.dir !== folder) await tidy(old.dir);
     }
+    await audit(req.user!, { entity: "photo", entityId: saved.id, assetId: asset.id, action: "create", summary: saved.replaced.length ? "เปลี่ยนรูปอุปกรณ์" : "เพิ่มรูปอุปกรณ์" });
     res.status(201).json({ id: saved.id });
   } catch (err) {
     await removeNew(); // never leave orphan files behind
@@ -160,6 +162,7 @@ assetImagesRouter.delete("/assets/:id/images/:imageId", requireRole(...ASSET_EDI
   const row = await findImage(asset.id, imageId.data);
   if (!row) return fail(res, 404, "not_found", "ไม่พบรูปภาพ");
   await db.delete(assetImages).where(eq(assetImages.id, row.id));
+  await audit(req.user!, { entity: "photo", entityId: row.id, assetId: asset.id, action: "delete", summary: "ลบรูปอุปกรณ์" });
   const dir = config.uploadDir ? absDir(row.dir) : null;
   if (dir) {
     for (const name of [row.fileName, row.thumbName]) if (NAME.test(name)) await fs.rm(path.join(dir, name), { force: true });

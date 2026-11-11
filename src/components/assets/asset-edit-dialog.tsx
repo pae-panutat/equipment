@@ -271,11 +271,6 @@ function EditForm({
                     );
                   })}
                 </select>
-                <span className="text-xs">
-                  {asset.inProgressJobs > 0
-                    ? `มีงานกำลังดำเนินการ ${asset.inProgressJobs} รายการ จึงเป็น "กำลังดำเนินการ" — บันทึกผลงานให้เสร็จแล้วสถานะจะเปลี่ยนเอง`
-                    : "สถานะ \"กำลังดำเนินการ\" ระบบตั้งให้เองเมื่อมีงานที่กำลังดำเนินการ (ตั้งเองไม่ได้)"}
-                </span>
               </>
             ) : f.kind === "unit" ? (
               <select className={input} value={values.ownerUnitId} onChange={(e) => set("ownerUnitId", e.target.value)}>

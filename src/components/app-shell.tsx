@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Boxes, Database, LayoutDashboard, LogOut, Menu, ScanQrCode, X } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, LogOut, Menu, ScanQrCode, X, History, CalendarDays, FileBarChart } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
+import { CommandPalette } from "@/components/command-palette";
 import { RailTip } from "@/components/ui/rail-tip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar, UserIcon } from "@/components/ui/user-icon";
@@ -17,10 +18,13 @@ type NavItem = { href: string; label: string; icon: React.ComponentType<{ classN
 const MAIN: NavItem[] = [
   { href: "/", label: "ภาพรวม", icon: LayoutDashboard },
   { href: "/assets", label: "ทะเบียนอุปกรณ์", icon: Boxes },
+  { href: "/calendar", label: "ปฏิทินบำรุงรักษา", icon: CalendarDays },
+  { href: "/reports", label: "รายงาน", icon: FileBarChart },
 ];
 const ADMIN: NavItem[] = [
   { href: "/master", label: "ข้อมูลหลัก", icon: Database },
   { href: "/users", label: "ผู้ใช้งาน", icon: UserIcon },
+  { href: "/audit", label: "ประวัติการแก้ไข", icon: History },
 ];
 
 /** compact = the folded sidebar: icons only (the name is still the tooltip and the screen-reader label). */
@@ -63,7 +67,7 @@ function Brand() {
       <span className="grid size-9 shrink-0 place-items-center rounded-xl brand-mark" aria-hidden="true">
         <ScanQrCode className="size-[18px]" />
       </span>
-      <span className="leading-tight">
+      <span className="whitespace-nowrap leading-tight max-[420px]:hidden">
         <span className="block text-[15px] font-bold">CMU Asset</span>
         <span className="block text-xs text-muted-foreground">Maintenance</span>
       </span>
@@ -162,7 +166,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="lg:hidden">
             <Brand />
           </div>
-          <div className="ml-auto flex min-w-0 items-center gap-2.5" title={`${user.displayName} · ${ROLE_LABEL[user.role]}`}>
+          <div className="ml-auto">
+            <CommandPalette />
+          </div>
+          <div className="flex min-w-0 items-center gap-2.5" title={`${user.displayName} · ${ROLE_LABEL[user.role]}`}>
             <div className="hidden min-w-0 text-right leading-tight sm:block">
               <p className="truncate text-sm font-bold">{user.displayName}</p>
               <p className="truncate text-xs text-muted-foreground">

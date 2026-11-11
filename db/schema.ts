@@ -193,3 +193,21 @@ export const sessions = mysqlTable(
   },
   (t) => [index("ix_session_user").on(t.userId), index("ix_session_expires").on(t.expiresAt)],
 );
+
+// Who changed what and when (assets, jobs, plans, photos, imports). Rows are only ever added.
+export const auditLog = mysqlTable(
+  "audit_log",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    at: timestamp("at").notNull().defaultNow(),
+    userId: int("user_id"),
+    username: varchar("username", { length: 191 }).notNull(),
+    entity: varchar("entity", { length: 24 }).notNull(), // asset | work_order | plan | photo | import
+    entityId: int("entity_id"),
+    assetId: int("asset_id"),
+    action: varchar("action", { length: 16 }).notNull(), // create | update | delete
+    summary: varchar("summary", { length: 255 }).notNull(),
+    detail: text("detail"), // JSON: { field: [before, after] }
+  },
+  (t) => [index("ix_audit_asset").on(t.assetId, t.id), index("ix_audit_entity").on(t.entity, t.id)],
+);
