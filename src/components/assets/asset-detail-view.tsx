@@ -43,6 +43,8 @@ const PRIORITY_TONE: Record<Priority, string> = {
 };
 
 // Same grid on every row and on the header, so the columns line up: date | job | status
+// literal class names (so Tailwind finds them); the rows of a job on a phone are numbered 1..6
+const ROW = ["row-start-1", "row-start-2", "row-start-3", "row-start-4", "row-start-5", "row-start-6"] as const;
 const WO_GRID = "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 sm:grid-cols-[132px_minmax(0,1fr)_140px] sm:gap-x-4";
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -229,7 +231,7 @@ export function AssetDetailView({ id }: { id: string }) {
       <Card className="print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>
-            ประวัติงาน <span className="text-sm font-normal text-muted-foreground">(งานที่ยังไม่เสร็จทั้งหมด และล่าสุด 10 รายการ)</span>
+            ประวัติงาน
           </CardTitle>
           {canRecord && (
             <button
@@ -262,10 +264,13 @@ export function AssetDetailView({ id }: { id: string }) {
                   const tone = WO_TONE[w.status];
                   const date = w.performedOn ?? w.dueDate;
                   const hasFooter = Boolean(w.recordedBy);
-                  // rows are numbered so an absent description / footer leaves no empty gap on phones
-                  const extra = (w.description ? 1 : 0) + (hasFooter ? 1 : 0);
-                  const footRow = w.description ? "row-start-4" : "row-start-3";
-                  const dateRow = extra === 2 ? "row-start-5" : extra === 1 ? "row-start-4" : "row-start-3";
+                  // rows are numbered so an absent description / footer leaves no empty gap on phones:
+                  // title, number, [description], [recorded by], date, then the badges at the bottom-left
+                  const d = w.description ? 1 : 0;
+                  const f = hasFooter ? 1 : 0;
+                  const footRow = ROW[2 + d];
+                  const dateRow = ROW[2 + d + f];
+                  const badgeRow = ROW[3 + d + f];
                   return (
                     <li key={w.id} className={`${WO_GRID} py-3.5 sm:items-start ${fresh.has(w.id) ? "fresh" : ""}`}>
                       <div className="contents sm:col-start-2 sm:row-start-1 sm:block">
@@ -275,8 +280,6 @@ export function AssetDetailView({ id }: { id: string }) {
                         </p>
                         <p className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:mt-1">
                           <span className="tabular">{w.number}</span>
-                          <span className="rounded-md bg-muted px-2 py-0.5">{WORK_ORDER_KIND_LABEL[w.kind]}</span>
-                          <span className={`rounded-md px-2 py-0.5 ${PRIORITY_TONE[w.priority]}`}>ความสำคัญ {PRIORITY_LABEL[w.priority]}</span>
                         </p>
                         {w.description && <p className="col-span-2 row-start-3 line-clamp-3 whitespace-pre-line break-words text-sm text-muted-foreground sm:mt-1.5">{w.description}</p>}
                         {hasFooter && (
@@ -284,6 +287,10 @@ export function AssetDetailView({ id }: { id: string }) {
                             <span>บันทึกโดย {w.recordedBy}</span>
                           </p>
                         )}
+                        <p className={`col-span-2 ${badgeRow} flex flex-wrap items-center justify-start gap-2 text-xs sm:mt-2`}>
+                          <span className="rounded-md bg-muted px-2 py-0.5">{WORK_ORDER_KIND_LABEL[w.kind]}</span>
+                          <span className={`rounded-md px-2 py-0.5 ${PRIORITY_TONE[w.priority]}`}>ความสำคัญ {PRIORITY_LABEL[w.priority]}</span>
+                        </p>
                       </div>
                       <div className="col-start-2 row-start-1 flex items-center gap-1 justify-self-end sm:col-start-3 sm:justify-self-start">
                         <span className={`inline-flex h-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${tone.badge}`}>
