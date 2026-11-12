@@ -15,6 +15,7 @@ import {
   type IntervalUnit,
   type Priority,
   type Paged,
+  type TodayNotifications,
   type WorkOrderKind,
   type WorkOrderStatus,
 } from "../shared";
@@ -85,7 +86,12 @@ dataRouter.get("/pulse", async (req, res) => {
         SELECT COUNT(*) AS n, COALESCE(MAX(w.id), 0) AS id, COALESCE(UNIX_TIMESTAMP(MAX(COALESCE(w.completed_at, w.created_at))), 0) AS t,
                COALESCE(SUM(w.status = 'done'), 0) AS done
         FROM work_orders w JOIN assets a ON a.id = w.asset_id WHERE ${where}`);
-      return `${a.n}.${a.id}.${a.t}|${w.n}.${w.id}.${w.t}.${w.done}`;
+      // plans too (a new plan, a changed due date or an on/off switch moves the bell), plus today's date so the bell
+      // updates by itself when the day changes at midnight
+      const [p] = await rows<{ n: number; h: string }>(sql`
+        SELECT COUNT(*) AS n, COALESCE(SUM(CRC32(CONCAT(p.id, '|', p.next_due_date, '|', p.active))), 0) AS h
+        FROM maintenance_plans p JOIN assets a ON a.id = p.asset_id WHERE ${where}`);
+      return `${a.n}.${a.id}.${a.t}|${w.n}.${w.id}.${w.t}.${w.done}|${p.n}.${p.h}|${bangkokToday()}`;
     })();
     hit = { at: Date.now(), token };
     pulseCache.set(scopeKey, hit);
@@ -102,6 +108,23 @@ dataRouter.get("/meta/filters", async (req, res) => {
   const units = allowed ? all.filter((u) => allowed.includes(u.id)) : all;
   const types = await rows<{ id: number; name: string }>(sql`SELECT id, name FROM asset_types WHERE archived_at IS NULL ORDER BY name`);
   const body: FilterOptions = { units: units.map((u) => ({ id: u.id, name: u.name, parentId: u.parent_id !== null && units.some((p) => p.id === u.parent_id) ? u.parent_id : null })), types };
+  res.json(body);
+});
+
+// The bell in the top bar: plans due today in the units this user may see (same scope rule as the dashboard).
+dataRouter.get("/notifications/today", async (req, res) => {
+  const today = bangkokToday();
+  const where = await assetScope({}, req.user!);
+  const list = await rows<{ plan_id: number; asset_id: number; code: string; name: string; unit: string; title: string; in_progress: number }>(sql`
+    SELECT p.id AS plan_id, a.id AS asset_id, a.code, a.name, ou.name AS unit, p.title,
+           EXISTS(SELECT 1 FROM work_orders w WHERE w.plan_id = p.id AND w.status = 'in_progress') AS in_progress
+    FROM maintenance_plans p JOIN assets a ON a.id = p.asset_id JOIN organization_units ou ON ou.id = a.owner_unit_id
+    WHERE p.active = 1 AND a.status <> 'disposed' AND p.next_due_date = ${today} AND ${where}
+    ORDER BY in_progress ASC, a.code ASC`);
+  const body: TodayNotifications = {
+    asOf: today,
+    items: list.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, unitName: u.unit, title: u.title, inProgress: Number(u.in_progress) === 1 })),
+  };
   res.json(body);
 });
 

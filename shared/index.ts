@@ -51,6 +51,11 @@ export type DashboardSummary = {
   recent: { id: number; number: string; assetId: number; assetCode: string; assetName: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }[];
 };
 
+export type TodayNotifications = {
+  asOf: string; // YYYY-MM-DD, Asia/Bangkok
+  items: { planId: number; assetId: number; assetCode: string; assetName: string; unitName: string; title: string; inProgress: boolean }[];
+};
+
 export type AssetListItem = {
   id: number;
   code: string;

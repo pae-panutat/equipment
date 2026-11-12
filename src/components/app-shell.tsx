@@ -7,6 +7,7 @@ import { Boxes, Database, LayoutDashboard, LogOut, Menu, MoreHorizontal, Monitor
 import { ROLE_LABEL } from "@shared/index";
 import { RailTip } from "@/components/ui/rail-tip";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 import { UserAvatar, UserIcon } from "@/components/ui/user-icon";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -222,6 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <UserAvatar />
           </div>
           <div className="flex items-center">
+            <NotificationBell />
             <ThemeToggle />
             <button
               type="button"
