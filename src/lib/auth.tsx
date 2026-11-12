@@ -25,6 +25,7 @@ export function useAuth(): AuthState {
   return ctx;
 }
 
+const LOGOUT_KEY = "equiplog:logout";
 const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000]; // then give up and show a "try again" screen
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -93,11 +94,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user && pathname === "/login") router.replace(safeNextPath(new URLSearchParams(window.location.search).get("next")));
   }, [loading, connectionError, user, pathname, router]);
 
+  // Signing out in one tab signs out every open tab (the "storage" event fires in the OTHER tabs only).
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LOGOUT_KEY && e.newValue) setUser(null);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await apiSend("POST", "/auth/logout");
     } finally {
       setUser(null);
+      try {
+        localStorage.setItem(LOGOUT_KEY, String(Date.now()));
+      } catch {
+        // storage unavailable (private mode): other tabs will still sign out on their next request
+      }
     }
   }, []);
 
