@@ -272,6 +272,25 @@ button[data-select][aria-expanded="true"] {
   background-image: linear-gradient(135deg, color-mix(in oklab, var(--primary) 10%, transparent), color-mix(in oklab, var(--gold) 7%, transparent));
   border-color: color-mix(in oklab, var(--primary) 25%, var(--border));
 }
+/* Filter cards: a bright stroke runs round the whole card all the time, hover or not (kept running even when the system asks for reduced motion, as the card edge is the main visual cue). */
+@property --edge-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes edgerun { to { --edge-a: 360deg; } }
+.filter-card::before {
+  background: conic-gradient(from var(--edge-a), transparent 60%, #7454e5 80%, transparent 100%);
+  padding: 2px;
+  animation: edgerun 2.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-card::before { animation-duration: 2.5s !important; animation-iteration-count: infinite !important; }
+}
+/* The filter card is the main control: resting the mouse on it lifts and enlarges the whole card. */
+.filter-card { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease; transform-origin: center top; }
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .filter-card:hover { transform: scale(1.025); position: relative; z-index: 20; box-shadow: 0 24px 60px -20px color-mix(in oklab, var(--primary) 55%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-card { transition-duration: 0.35s !important; }
+}
 @keyframes selectpop {
   from { opacity: 0; transform: translateY(-4px) scale(0.98); }
   to { opacity: 1; transform: none; }
@@ -287,7 +306,7 @@ input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="
 
 /* Login page: a drifting aurora, a faint grid and a glowing card. */
 .login-bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.login-bg::before { content: ""; position: absolute; inset: 0; background-image: var(--geo); background-size: 69.282px 120px; mask-image: radial-gradient(520px 400px at 100% 0%, #000, transparent 100%), radial-gradient(420px 320px at 0% 100%, #000, transparent 100%); }
+.login-bg::before { content: ""; position: absolute; inset: 0; background-image: var(--geo), var(--geo); background-size: 69.282px 120px; mask-image: radial-gradient(520px 400px at 100% 0%, #000, transparent 100%), radial-gradient(420px 320px at 0% 100%, #000, transparent 100%); }
 .login-blob { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: 0.28; animation: loginfloat 20s ease-in-out infinite alternate; }
 .dark .login-blob { opacity: 0.42; }
 @keyframes loginfloat {

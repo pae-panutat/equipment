@@ -18,7 +18,7 @@ const ERRORS: Record<string, string> = {
   inactive: "บัญชีนี้ถูกปิดการใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
 };
 
-const input = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
+const input = "min-h-10 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
 
 export function LoginForm() {
   const sp = useSearchParams();
@@ -44,6 +44,13 @@ export function LoginForm() {
       /* ignore */
     }
   };
+  // the login screen is a fixed full-screen layer: lock the document too, so the mouse wheel can never scroll the page behind it
+  useEffect(() => {
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = "";
+    };
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(ERRORS[sp.get("error") ?? ""] ?? null);
 
@@ -61,7 +68,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="relative isolate grid min-h-dvh place-items-center overflow-hidden px-4 py-10">
+    <div className="fixed inset-0 isolate grid place-items-center overflow-hidden px-4 py-3">
       <div className="login-bg" aria-hidden="true">
         <span className="login-blob left-[-10%] top-[-15%] size-[520px] bg-primary" />
         <span className="login-blob right-[-8%] top-[20%] size-[460px] bg-gold [animation-delay:-6s]" />
@@ -70,7 +77,7 @@ export function LoginForm() {
       <div className="absolute right-4 top-4 z-10">
         <ThemeToggle />
       </div>
-      <div className="grid w-full max-w-[1040px] items-center gap-10 lg:grid-cols-[1.1fr_420px] lg:gap-16">
+      <div className="grid w-full max-w-[1040px] items-center gap-6 lg:grid-cols-[1.1fr_420px] lg:gap-16">
         <div className="hidden lg:block">
           <span className="inline-grid size-16 place-items-center rounded-2xl brand-mark shadow-[0_12px_40px_-8px_var(--primary)]" aria-hidden="true">
             <Monitor className="size-9" />
@@ -99,7 +106,7 @@ export function LoginForm() {
         </div>
 
         <div className="w-full max-w-[420px] justify-self-center">
-        <div className="mb-6 flex items-center justify-center gap-2.5 lg:hidden">
+        <div className="mb-3 flex items-center justify-center gap-2.5 lg:hidden">
           <span className="grid size-11 place-items-center rounded-xl brand-mark" aria-hidden="true">
             <Monitor className="size-6" />
           </span>
@@ -113,7 +120,7 @@ export function LoginForm() {
           <h1 className="text-xl font-bold">เข้าสู่ระบบ</h1>
 
           {error && (
-            <p role="alert" className="mt-4 rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">
+            <p role="alert" className="mt-3 rounded-xl bg-bad-soft px-3 py-2 text-sm text-bad">
               {error}
             </p>
           )}
@@ -127,18 +134,18 @@ export function LoginForm() {
                 setError(ERRORS.cmu_disabled);
               }
             }}
-            className="text-sm mt-5 flex min-h-9 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
+            className="text-sm mt-3 flex min-h-9 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
           >
             <IdCard className="size-5" aria-hidden="true" />
             เข้าสู่ระบบด้วย CMU Account
           </a>
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground" aria-hidden="true">
+          <div className="my-3 flex items-center gap-3 text-xs text-muted-foreground" aria-hidden="true">
             <span className="h-px flex-1 bg-border" />
             หรือ
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <form onSubmit={submit} className="grid gap-4">
+          <form onSubmit={submit} className="grid gap-2.5">
             <label className="grid gap-1 text-[13px] text-muted-foreground">
               ชื่อผู้ใช้ (Username)
               <input className={input} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} required />
@@ -147,7 +154,7 @@ export function LoginForm() {
               รหัสผ่าน (Password)
               <input className={input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
             </label>
-            <label className="flex min-h-11 items-center gap-3 text-[15px]">
+            <label className="flex min-h-9 items-center gap-3 text-[15px]">
               <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={remember} onChange={(e) => changeRemember(e.target.checked)} />
               Remember me
             </label>
