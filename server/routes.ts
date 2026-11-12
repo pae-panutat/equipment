@@ -115,15 +115,15 @@ dataRouter.get("/meta/filters", async (req, res) => {
 dataRouter.get("/notifications/today", async (req, res) => {
   const today = bangkokToday();
   const where = await assetScope({}, req.user!);
-  const list = await rows<{ plan_id: number; asset_id: number; code: string; name: string; unit: string; title: string; in_progress: number }>(sql`
-    SELECT p.id AS plan_id, a.id AS asset_id, a.code, a.name, ou.name AS unit, p.title,
+  const list = await rows<{ plan_id: number; asset_id: number; code: string; name: string; unit: string; title: string; due: string; in_progress: number }>(sql`
+    SELECT p.id AS plan_id, a.id AS asset_id, a.code, a.name, ou.name AS unit, p.title, p.next_due_date AS due,
            EXISTS(SELECT 1 FROM work_orders w WHERE w.plan_id = p.id AND w.status = 'in_progress') AS in_progress
     FROM maintenance_plans p JOIN assets a ON a.id = p.asset_id JOIN organization_units ou ON ou.id = a.owner_unit_id
-    WHERE p.active = 1 AND a.status <> 'disposed' AND p.next_due_date = ${today} AND ${where}
-    ORDER BY in_progress ASC, a.code ASC`);
+    WHERE p.active = 1 AND a.status <> 'disposed' AND p.next_due_date <= ${today} AND ${where}
+    ORDER BY in_progress ASC, p.next_due_date ASC, a.code ASC`);
   const body: TodayNotifications = {
     asOf: today,
-    items: list.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, unitName: u.unit, title: u.title, inProgress: Number(u.in_progress) === 1 })),
+    items: list.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, unitName: u.unit, title: u.title, dueDate: u.due, overdue: u.due < today, inProgress: Number(u.in_progress) === 1 })),
   };
   res.json(body);
 });

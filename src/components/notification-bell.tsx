@@ -7,6 +7,7 @@ import { canEditAssets, type TodayNotifications } from "@shared/index";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
 import { TONE } from "@/lib/due-tone";
+import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** The bell in the top bar: maintenance plans that are overdue, due today or coming up soon (the same list as the dashboard). */
@@ -31,7 +32,7 @@ export function NotificationBell() {
     };
   }, [open]);
 
-  // only what is due today: nothing about overdue or upcoming plans
+  // what is due today plus anything older that nobody has dealt with yet (overdue plans stay until they are done, moved or switched off)
   const items = data?.items ?? [];
   const canRecord = user ? canEditAssets(user.role) : false;
   const asOf = data?.asOf ?? "";
@@ -93,12 +94,13 @@ export function NotificationBell() {
         <div className="fixed inset-x-3 top-16 z-50 overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96">
           <p className="border-b border-border px-4 py-3 text-sm font-bold">แจ้งเตือนการบำรุงรักษา</p>
           {items.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">วันนี้ไม่มีงานบำรุงรักษาที่ครบกำหนด</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">ไม่มีงานบำรุงรักษาที่ต้องดำเนินการ</p>
           ) : (
             <ul className="max-h-[70dvh] overflow-y-auto">
               {items.map((u) => {
-                const tone = u.inProgress ? TONE.plan : TONE.soon;
-                const text = u.inProgress ? "กำลังดำเนินการแล้ว" : "ครบกำหนดวันนี้";
+                const tone = u.inProgress ? TONE.plan : u.overdue ? TONE.overdue : TONE.soon;
+                const late = Math.round((Date.parse(`${asOf}T00:00:00Z`) - Date.parse(`${u.dueDate}T00:00:00Z`)) / 86_400_000);
+                const text = u.inProgress ? "กำลังดำเนินการแล้ว" : u.overdue ? `เกินกำหนด ${late} วัน` : "ครบกำหนดวันนี้";
                 const href = canRecord ? `/assets/${u.assetId}?plan=${u.planId}` : `/assets/${u.assetId}`;
                 return (
                   <li key={u.planId} className="border-t border-border first:border-t-0">
@@ -113,6 +115,7 @@ export function NotificationBell() {
                         </span>
                         <span className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
                           <span className={cn("rounded-full px-2 py-0.5 font-bold", tone.chip)}>{text}</span>
+                          <span className="tabular text-muted-foreground">กำหนด {formatDate(u.dueDate)}</span>
                         </span>
                       </span>
                     </Link>

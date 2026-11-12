@@ -53,7 +53,7 @@ export type DashboardSummary = {
 
 export type TodayNotifications = {
   asOf: string; // YYYY-MM-DD, Asia/Bangkok
-  items: { planId: number; assetId: number; assetCode: string; assetName: string; unitName: string; title: string; inProgress: boolean }[];
+  items: { planId: number; assetId: number; assetCode: string; assetName: string; unitName: string; title: string; dueDate: string; overdue: boolean; inProgress: boolean }[];
 };
 
 export type AssetListItem = {
