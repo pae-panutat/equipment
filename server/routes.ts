@@ -147,14 +147,14 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
     WHERE w.status = 'done' AND w.performed_on BETWEEN ${from} AND ${to} AND ${where}
     GROUP BY month`);
-  const q_upcoming = rows<{ plan_id: number; asset_id: number; code: string; name: string; title: string; due: string }>(sql`
-    SELECT p.id AS plan_id, a.id AS asset_id, a.code, a.name, p.title, p.next_due_date AS due
-    FROM maintenance_plans p JOIN assets a ON a.id = p.asset_id
+  const q_upcoming = rows<{ plan_id: number; asset_id: number; code: string; name: string; unit: string; title: string; due: string }>(sql`
+    SELECT p.id AS plan_id, a.id AS asset_id, a.code, a.name, ou.name AS unit, p.title, p.next_due_date AS due
+    FROM maintenance_plans p JOIN assets a ON a.id = p.asset_id JOIN organization_units ou ON ou.id = a.owner_unit_id
     WHERE p.active = 1 AND a.status <> 'disposed' AND p.next_due_date <= ${soonLimit} AND ${where}
-    ORDER BY p.next_due_date ASC LIMIT 8`);
+    ORDER BY (p.next_due_date = ${today}) DESC, p.next_due_date ASC LIMIT 8`); // what is due today always makes the list, ahead of older overdue plans
   const q_recent = rows<{ id: number; number: string; asset_id: number; code: string; name: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }>(sql`
     SELECT w.id, w.number, a.id AS asset_id, a.code, a.name, w.title, w.kind, w.status,
-           DATE_FORMAT(COALESCE(w.completed_at, w.created_at), '%Y-%m-%dT%H:%i:%sZ') AS at
+           DATE_FORMAT(COALESCE(w.completed_at, CONVERT_TZ(w.created_at, @@session.time_zone, '+00:00')), '%Y-%m-%dT%H:%i:%sZ') AS at
     FROM work_orders w JOIN assets a ON a.id = w.asset_id
     WHERE ${where} ORDER BY COALESCE(w.completed_at, w.created_at) DESC, w.id DESC LIMIT 8`);
 
@@ -176,7 +176,7 @@ dataRouter.get("/dashboard/summary", async (req, res) => {
     byStatus: byStatus.map((s) => ({ ...s, count: Number(s.count) })),
     maintenance: { overdue: Number(maint?.overdue ?? 0), dueSoon: Number(maint?.due_soon ?? 0), noPlan: Number(noPlan?.n ?? 0) },
     completedByMonth,
-    upcoming: upcoming.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, title: u.title, dueDate: u.due, overdue: u.due < today })),
+    upcoming: upcoming.map((u) => ({ planId: u.plan_id, assetId: u.asset_id, assetCode: u.code, assetName: u.name, unitName: u.unit, title: u.title, dueDate: u.due, overdue: u.due < today })),
     recent: recent.map((r) => ({ id: r.id, number: r.number, assetId: r.asset_id, assetCode: r.code, assetName: r.name, title: r.title, kind: r.kind, status: r.status, at: r.at })),
   };
   res.json(body);

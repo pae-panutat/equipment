@@ -21,7 +21,10 @@ const PAGE = 30;
 export function AuditView() {
   const [entity, setEntity] = useState("");
   const [page, setPage] = useState(1);
-  const { data, error, loading, reload } = useApi<Paged<HistoryItem>>("/audit", { entity: entity || undefined, page, pageSize: PAGE }, { live: true });
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const badRange = from !== "" && to !== "" && from > to;
+  const { data, error, loading, reload } = useApi<Paged<HistoryItem>>("/audit", { entity: entity || undefined, from: from || undefined, to: to || undefined, page, pageSize: PAGE }, { live: true });
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE)) : 1;
   return (
     <div className="grid gap-5">
@@ -30,6 +33,7 @@ export function AuditView() {
         <p className="mt-1 text-muted-foreground">ใครแก้อะไรเมื่อไหร่ในระบบ</p>
       </div>
       <Card>
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           ประเภทรายการ
           <Select
@@ -44,6 +48,22 @@ export function AuditView() {
             ))}
           </Select>
         </label>
+          {/* look back: pick any period in the past */}
+          <label className="grid gap-1 text-[13px] text-muted-foreground">
+            ตั้งแต่วันที่
+            <input type="date" value={from} max={to || undefined} onChange={(e) => (setFrom(e.target.value), setPage(1))} className="min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground" />
+          </label>
+          <label className="grid gap-1 text-[13px] text-muted-foreground">
+            ถึงวันที่
+            <input type="date" value={to} min={from || undefined} onChange={(e) => (setTo(e.target.value), setPage(1))} className="min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground" />
+          </label>
+          {(from || to) && (
+            <button type="button" onClick={() => (setFrom(""), setTo(""), setPage(1))} className="text-sm min-h-11 rounded-xl border border-border px-3.5 hover:bg-muted">
+              ล้างช่วงวันที่
+            </button>
+          )}
+        </div>
+        {badRange && <p role="alert" className="mt-3 rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">วันที่เริ่มต้นต้องไม่หลังวันที่สิ้นสุด</p>}
         <div className="mt-3">
           {error && <ErrorState message={error} onRetry={reload} />}
           {loading && !data && <Skeleton className="h-64" />}

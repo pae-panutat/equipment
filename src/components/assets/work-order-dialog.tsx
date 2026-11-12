@@ -26,6 +26,7 @@ import { formatDate } from "@/lib/format";
 import { focusField } from "@/lib/focus-field";
 import { useApi } from "@/lib/use-api";
 import { Select } from "@/components/ui/select";
+import { STATUS_DOT } from "@/components/status-badge";
 
 type Values = {
   kind: string;
@@ -40,7 +41,7 @@ type Values = {
 };
 type Key = keyof Values;
 
-const input = "min-h-11 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
+const input = "min-h-10 w-full rounded-xl border border-border bg-card px-3 text-[15px] text-foreground";
 const btn = "text-sm min-h-9 rounded-xl px-3.5 font-bold disabled:opacity-50";
 
 /** Today in Thailand as YYYY-MM-DD (the server uses the same day for its "not in the future" rule). */
@@ -103,7 +104,7 @@ export function WorkOrderDialog({ assetId, workOrderId, planId, onClose }: { ass
   const title = target === "new" || target === null ? "บันทึกงานซ่อมบำรุง" : "แก้ไข / บันทึกผลงาน";
 
   return (
-    <Modal title={detail.data ? `${title} · ${detail.data.code}` : title} onClose={() => onClose(false)} canDismiss={!dirty}>
+    <Modal title={detail.data ? `${title} · ${detail.data.code}` : title} onClose={() => onClose(false)} canDismiss={!dirty} className="max-w-[860px]">
       {detail.error || missing ? (
         <div className="grid gap-4 p-6">
           <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad">
@@ -130,7 +131,7 @@ export function WorkOrderDialog({ assetId, workOrderId, planId, onClose }: { ass
 function PickJob({ asset, jobs, onPick, onCancel }: { asset: AssetDetail; jobs: WorkOrderItem[]; onPick: (c: "new" | number) => void; onCancel: () => void }) {
   return (
     <>
-      <div className="overflow-y-auto px-5 py-4 sm:px-6">
+      <div className="overflow-y-auto px-5 py-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
         <p className="text-[15px]">
           อุปกรณ์นี้ยังมีงานที่ <b>ยังไม่เสร็จ {jobs.length} รายการ</b> (สถานะอุปกรณ์ตอนนี้: <b>{ASSET_STATUS_LABEL[asset.status]}</b>) เลือกงานที่ต้องการบันทึกผล หรือเพิ่มงานใหม่
         </p>
@@ -260,7 +261,7 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
   if (step === "confirm") {
     return (
       <>
-        <div className="overflow-y-auto px-5 py-4 sm:px-6">
+        <div className="overflow-y-auto px-5 py-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
           <p className="text-[15px]">
             {editing ? (
               <>ตรวจสอบการเปลี่ยนแปลงของ <b>{wo.number}</b> ({changed.length} รายการ) แล้วกดยืนยันเพื่อบันทึก</>
@@ -324,8 +325,9 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
     );
   }
 
-  const field = (k: Key, children: React.ReactNode, wide = false) => (
-    <label data-field={k} className={`grid gap-1 text-[13px] text-muted-foreground ${wide ? "sm:col-span-2" : ""}`}>
+  // md and up: a 6-column grid; a field takes a third of the row, half of it, or all of it (so the whole form fits the screen)
+  const field = (k: Key, children: React.ReactNode, wide: boolean | "half" = false) => (
+    <label data-field={k} className={`grid gap-1 text-[13px] text-muted-foreground ${wide === true ? "md:col-span-6" : wide === "half" ? "md:col-span-3" : "md:col-span-2"}`}>
       {LABEL[k]}
       {children}
     </label>
@@ -334,8 +336,8 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
 
   return (
     <>
-      <form id="work-order-form" onSubmit={review} className="grid gap-4 overflow-y-auto px-5 py-4 sm:grid-cols-2 sm:px-6">
-        <p className="rounded-xl bg-muted px-3 py-2 text-sm sm:col-span-2">
+      <form id="work-order-form" onSubmit={review} className="grid content-start gap-x-3 gap-y-2.5 overflow-x-hidden overflow-y-auto px-5 py-3 [scrollbar-width:none] md:grid-cols-6 sm:px-6 [&::-webkit-scrollbar]:hidden">
+        <p className="rounded-xl bg-muted px-3 py-1.5 text-sm md:col-span-6">
           {asset.code} · {asset.name} · สถานะปัจจุบัน <b>{ASSET_STATUS_LABEL[asset.status]}</b>
           {editing && <> · ใบงาน <b>{wo.number}</b></>}
         </p>
@@ -346,8 +348,8 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
           </Select>
         ))}
         {field("title", <input data-autofocus className={input} value={v.title} maxLength={191} onChange={(e) => set("title", e.target.value)} placeholder="เช่น ล้างทำความสะอาดแอร์ / เปลี่ยนคาปาซิเตอร์" />, true)}
-        {field("performedOn", <input className={input} type="date" value={v.performedOn} max={todayBangkok()} onChange={(e) => set("performedOn", e.target.value)} />)}
-        {field("dueDate", <input className={input} type="date" value={v.dueDate} onChange={(e) => set("dueDate", e.target.value)} />)}
+        {field("performedOn", <input className={input} type="date" value={v.performedOn} max={todayBangkok()} onChange={(e) => set("performedOn", e.target.value)} />, asset.plans.length > 0 ? false : "half")}
+        {field("dueDate", <input className={input} type="date" value={v.dueDate} onChange={(e) => set("dueDate", e.target.value)} />, asset.plans.length > 0 ? false : "half")}
         {field("priority", <Select className={input} value={v.priority} onChange={(e) => set("priority", e.target.value)}>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}</Select>)}
         {asset.plans.length > 0 &&
           field("planId", (
@@ -356,18 +358,46 @@ function Form({ asset, wo, planId, onClose, onDirtyChange }: { asset: AssetDetai
               {activePlans.map((p) => <option key={p.id} value={p.id}>{planLabel(String(p.id))}</option>)}
             </Select>
           ))}
-        {field("description", <textarea className={`${input} min-h-24 py-2`} value={v.description} maxLength={5000} onChange={(e) => set("description", e.target.value)} />, true)}
-        {field("assetStatus", (
-          <Select className={input} value={v.assetStatus} onChange={(e) => set("assetStatus", e.target.value)}>
-            <option value="">{auto ? `อัตโนมัติ: เปลี่ยนเป็น ${ASSET_STATUS_LABEL[auto]}` : "ไม่เปลี่ยน"} (ปัจจุบัน: {ASSET_STATUS_LABEL[asset.status]})</option>
-            {ASSET_STATUSES.filter((s) => s !== asset.status).map((s) => {
-              const problem = assetStatusProblem(s, inProgressAfter);
-              return <option key={s} value={s} disabled={problem !== null} title={problem ?? undefined}>เปลี่ยนเป็น {ASSET_STATUS_LABEL[s]}{problem ? " (เลือกไม่ได้ตอนนี้)" : ""}</option>;
+        {field("description", <textarea rows={2} className={`${input} min-h-[3.75rem] resize-none py-2`} value={v.description} maxLength={5000} onChange={(e) => set("description", e.target.value)} />, true)}
+        {/* The status the equipment will have once this is saved: one tap on a coloured chip, no long list to read.
+            The chip that is lit is the result; the system's own choice (from the jobs) is lit until someone picks another. */}
+        <div data-field="assetStatus" role="radiogroup" aria-label={LABEL.assetStatus} className="grid gap-1.5 text-[13px] text-muted-foreground md:col-span-6">
+          <span>สถานะอุปกรณ์หลังบันทึก</span>
+          <div className="flex flex-wrap gap-2">
+            {ASSET_STATUSES.map((st) => {
+              const result = auto ?? asset.status;
+              const picked = (v.assetStatus || result) === st;
+              const blocked = st !== result && assetStatusProblem(st, inProgressAfter) !== null;
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  role="radio"
+                  aria-checked={picked}
+                  disabled={blocked}
+                  onClick={() => set("assetStatus", st === result ? "" : st)}
+                  className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${picked ? "border-primary bg-primary-soft text-primary" : "border-border bg-card text-foreground hover:bg-muted"}`}
+                >
+                  <i className={`size-2.5 rounded-full ${STATUS_DOT[st]}`} aria-hidden="true" />
+                  {ASSET_STATUS_LABEL[st]}
+                  {st === asset.status && <span className="text-xs font-normal text-muted-foreground">(ตอนนี้)</span>}
+                </button>
+              );
             })}
-          </Select>
-        ), true)}
+          </div>
+          <p className="text-xs">
+            {v.assetStatus
+              ? `คุณเลือกเปลี่ยนเป็น "${ASSET_STATUS_LABEL[v.assetStatus as AssetStatus]}"`
+              : auto
+                ? `ระบบจะเปลี่ยนให้เป็น "${ASSET_STATUS_LABEL[auto]}" เองตามสถานะงาน`
+                : "ไม่เปลี่ยนสถานะ"}
+            {inProgressAfter > 0
+              ? " · มีงานที่ยังดำเนินการอยู่ จึงเลือก ปกติ / ชำรุด ไม่ได้"
+              : " · ไม่มีงานที่ดำเนินการอยู่ จึงเลือก กำลังดำเนินการ ไม่ได้"}
+          </p>
+        </div>
         {error && (
-          <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2.5 text-sm text-bad sm:col-span-2">
+          <p role="alert" className="rounded-xl bg-bad-soft px-3 py-2 text-sm text-bad md:col-span-6">
             {error}
           </p>
         )}

@@ -22,7 +22,7 @@ type Row = {
 };
 
 const select = sql`
-  SELECT l.id, DATE_FORMAT(l.at, '%Y-%m-%dT%H:%i:%sZ') AS at, l.username, l.entity, l.entity_id, l.asset_id, a.code AS asset_code,
+  SELECT l.id, DATE_FORMAT(CONVERT_TZ(l.at, @@session.time_zone, '+00:00'), '%Y-%m-%dT%H:%i:%sZ') AS at, l.username, l.entity, l.entity_id, l.asset_id, a.code AS asset_code,
          l.action, l.summary, l.detail
   FROM audit_log l LEFT JOIN assets a ON a.id = l.asset_id`;
 
@@ -53,9 +53,19 @@ historyRouter.get("/assets/:id/history", async (req, res) => {
 });
 
 historyRouter.get("/audit", requireRole("super_admin"), async (req, res) => {
-  const q = page.extend({ entity: z.enum(["asset", "work_order", "plan", "photo", "import"]).optional() }).safeParse(req.query);
+  const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+  const q = page.extend({ entity: z.enum(["asset", "work_order", "plan", "photo", "import"]).optional(), from: day.optional(), to: day.optional() }).safeParse(req.query);
   if (!q.success) return void res.status(400).json({ error: { code: "validation_error", message: "พารามิเตอร์ไม่ถูกต้อง" } });
-  const where = q.data.entity ? sql`WHERE l.entity = ${q.data.entity}` : sql``;
+  // from/to are calendar days in Bangkok. `at` is a TIMESTAMP, which MariaDB compares in the connection's own time zone (the host's can differ
+  // from this PC's), so the boundaries go in as exact moments (epoch seconds) and the database does the conversion.
+  const startOf = (d: string) => Math.floor(Date.parse(`${d}T00:00:00+07:00`) / 1000);
+  const endOf = (d: string) => Math.floor(Date.parse(`${d}T23:59:59+07:00`) / 1000);
+  const conds = [
+    q.data.entity ? sql`l.entity = ${q.data.entity}` : null,
+    q.data.from ? sql`l.at >= FROM_UNIXTIME(${startOf(q.data.from)})` : null,
+    q.data.to ? sql`l.at <= FROM_UNIXTIME(${endOf(q.data.to)})` : null,
+  ].filter((c) => c !== null);
+  const where = conds.length ? sql`WHERE ${sql.join(conds, sql` AND `)}` : sql``;
   const [count] = await rows<{ n: number }>(sql`SELECT COUNT(*) AS n FROM audit_log l ${where}`);
   const items = await rows<Row>(sql`${select} ${where} ORDER BY l.id DESC LIMIT ${q.data.pageSize} OFFSET ${(q.data.page - 1) * q.data.pageSize}`);
   res.json({ items: items.map(shape), page: q.data.page, pageSize: q.data.pageSize, total: Number(count.n) });

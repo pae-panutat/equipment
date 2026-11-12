@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { formatNumber } from "@/lib/format";
 
 function usePrefersReducedMotion() {
@@ -43,7 +44,7 @@ export function CountUp({ value }: { value: number }) {
 }
 
 /** A ring split by status, the total in the middle, and a legend that carries the numbers. */
-export function StatusDonut({ segments }: { segments: { label: string; value: number; dot: string; stroke: string }[] }) {
+export function StatusDonut({ segments }: { segments: { label: string; value: number; dot: string; stroke: string; href?: string }[] }) {
   const reduce = usePrefersReducedMotion();
   const [drawn, setDrawn] = useState(false);
   useEffect(() => {
@@ -92,15 +93,28 @@ export function StatusDonut({ segments }: { segments: { label: string; value: nu
       </div>
       <ul className="grid min-w-[190px] flex-1 gap-1.5 text-sm">
         {segments.map((s) => (
-          <li key={s.label} className={`flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-3 py-1.5 ${s.value === 0 ? "opacity-60" : ""}`}>
-            <span className="inline-flex items-center gap-2">
-              <i className={`size-2.5 rounded-full ${s.dot}`} aria-hidden="true" />
-              {s.label}
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <b className="tabular">{formatNumber(s.value)}</b>
-              <span className="tabular w-10 text-right text-xs text-muted-foreground">{total ? Math.round((s.value / total) * 100) : 0}%</span>
-            </span>
+          <li key={s.label}>
+            {(() => {
+              const body = (
+                <>
+                  <span className="inline-flex items-center gap-2">
+                    <i className={`size-2.5 rounded-full ${s.dot}`} aria-hidden="true" />
+                    {s.label}
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <b className="tabular">{formatNumber(s.value)}</b>
+                    <span className="tabular w-10 text-right text-xs text-muted-foreground">{total ? Math.round((s.value / total) * 100) : 0}%</span>
+                  </span>
+                </>
+              );
+              const row = "flex items-center justify-between gap-3 rounded-xl bg-muted/50 px-3 py-1.5";
+              // a status with something in it opens the register filtered to it; an empty one is not a link
+              return s.href && s.value > 0 ? (
+                <Link href={s.href} className={`${row} transition-colors hover:bg-primary-soft hover:text-primary`}>{body}</Link>
+              ) : (
+                <div className={`${row} ${s.value === 0 ? "opacity-60" : ""}`}>{body}</div>
+              );
+            })()}
           </li>
         ))}
       </ul>

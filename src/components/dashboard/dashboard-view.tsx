@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Boxes, ChevronRight, Snowflake } from "lucide-react";
+import { Boxes, ChevronRight, Tag } from "lucide-react";
 import { canEditAssets } from "@shared/index";
 import {
   ASSET_STATUSES,
@@ -71,10 +71,6 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
   const { user } = useAuth();
   const canRecord = user ? canEditAssets(user.role) : false; // only a Super Admin or Technician may record work (the server enforces it too)
   const tip = useTip();
-  const acQuery = new URLSearchParams();
-  if (filters.unitId) acQuery.set("unitId", filters.unitId);
-  if (data.totals.airConditionerTypeId) acQuery.set("typeId", String(data.totals.airConditionerTypeId));
-  const acLink = `/assets?${acQuery}`;
 
   if (data.totals.assets === 0) {
     return <EmptyState title="ไม่พบอุปกรณ์ตามตัวกรองนี้" hint="ลองล้างตัวกรองหรือเลือกส่วนงานอื่น" />;
@@ -92,6 +88,8 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
     value: data.byStatus.find((x) => x.status === s)?.count ?? 0,
     dot: STATUS_DOT[s],
     stroke: RING[s],
+    // pressing a status opens the register showing only that status (keeping the unit and type filters chosen above)
+    href: `/assets?${new URLSearchParams({ status: s, ...(filters.unitId ? { unitId: filters.unitId } : {}), ...(filters.typeId ? { typeId: filters.typeId } : {}) })}`,
   }));
   const months = data.completedByMonth.map((m) => ({ ...m, label: formatMonth(m.month) }));
   // pressing a type opens the register showing only that type (keeping the unit and status filters chosen above)
@@ -113,7 +111,7 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
           <div className="relative grid grid-cols-2 gap-4">
             {[
               { icon: Boxes, label: "อุปกรณ์ทั้งหมด", value: data.totals.assets, note: "รายการ (1 ตัว = 1 รายการ)" },
-              { icon: Snowflake, label: "เครื่องปรับอากาศ", value: data.totals.airConditioners, note: "ตัว ตามตัวกรองที่เลือก" },
+              { icon: Tag, label: "ประเภทอุปกรณ์", value: data.byType.length, note: "ประเภท ตามตัวกรองที่เลือก" },
             ].map((t) => (
               <div key={t.label} className="min-w-0">
                 <span className="inline-flex items-center gap-2 text-sm opacity-90">
@@ -134,12 +132,6 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
         <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6">
           <CardTitle className="text-[15px]">สถานะอุปกรณ์</CardTitle>
           <StatusDonut segments={statusSegments} />
-          <Link
-            href={acLink}
-            className="mt-auto inline-flex min-h-9 items-center justify-between gap-2 rounded-xl bg-primary-soft px-3.5 text-sm font-bold text-primary transition-colors hover:bg-muted"
-          >
-            ดูแอร์ในทะเบียนอุปกรณ์ <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
         </div>
       </Card>
 
@@ -153,7 +145,7 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
               {months.map((m) => (
                 <tr key={m.month} className="border-t border-border">
                   <td className="py-1">{m.label}</td>
-                  <td className="tabular py-1 text-right">{formatNumber(m.count)}</td>
+                  <td className="tabular py-1 text-right">{formatNumber(m.count)} งาน</td>
                 </tr>
               ))}
             </tbody>
@@ -200,23 +192,26 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
                 <tr className="text-muted-foreground">
-                  <th className="py-2 font-normal">อุปกรณ์</th>
+                  <th className="py-2 pl-3 font-normal">อุปกรณ์</th>
                   <th className="py-2 font-normal">งาน</th>
                   <th className="py-2 text-right font-normal">กำหนด</th>
                   <th className="w-8 py-2" aria-label="เปิด" />
                 </tr>
               </thead>
               <tbody>
-                {data.upcoming.map((u) => {
+                {/* what is due today comes first (and blinks), then the rest in the order the server sent them */}
+                {[...data.upcoming.filter((u) => u.dueDate === data.asOf), ...data.upcoming.filter((u) => u.dueDate !== data.asOf)].map((u) => {
                   // the whole row is a link (every cell links to the same place; only the first one is a tab stop)
                   const href = canRecord ? `/assets/${u.assetId}?plan=${u.planId}` : `/assets/${u.assetId}`;
                   const cell = "block py-2.5";
                   return (
-                    <tr key={`${u.planId}-${u.dueDate}`} className="border-t border-border transition-colors hover:bg-muted/50">
-                      <td className="pr-3">
+                    <tr key={`${u.planId}-${u.dueDate}`} className={cn("border-t border-border transition-colors hover:bg-muted/50", u.dueDate === data.asOf && "due-today")}>
+                      <td className="pl-3 pr-3">
                         <Link href={href} className={cell} aria-label={`${canRecord ? "บันทึกงาน" : "ดูอุปกรณ์"} ${u.assetCode} ${u.title} กำหนด ${formatDate(u.dueDate)}`}>
                           <span className="block font-bold text-primary">{u.assetCode}</span>
                           <span className="block text-muted-foreground">{u.assetName}</span>
+                          {/* a Super Admin or technician works across units, so they see whose it is; a unit's own people already know */}
+                          {canRecord && <span className="block text-xs text-muted-foreground">{u.unitName}</span>}
                         </Link>
                       </td>
                       <td className="pr-3">
@@ -232,14 +227,21 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
                             const tone = u.overdue ? TONE.overdue : TONE.soon;
                             return (
                               <span className={cn("mt-0.5 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold", tone.chip)}>
-                                <i className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden="true" />
+                                {days === 0 && !u.overdue ? (
+                                  <span className="relative flex size-2" aria-hidden="true">
+                                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                                    <span className="relative inline-flex size-2 rounded-full bg-amber-500" />
+                                  </span>
+                                ) : (
+                                  <i className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden="true" />
+                                )}
                                 {u.overdue ? `เกินกำหนด ${Math.abs(days)} วัน` : days === 0 ? "ครบกำหนดวันนี้" : `ใกล้ครบกำหนด อีก ${days} วัน`}
                               </span>
                             );
                           })()}
                         </Link>
                       </td>
-                      <td className="text-right">
+                      <td className="pr-3 text-right">
                         <Link href={href} tabIndex={-1} aria-hidden="true" className={cell}>
                           <ChevronRight className="ml-auto size-4 text-muted-foreground" />
                         </Link>

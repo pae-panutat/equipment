@@ -192,6 +192,20 @@ summary {
   .fresh { animation: none; background-color: color-mix(in oklab, var(--primary) 18%, transparent); }
 }
 
+/* A plan that is due today: the whole row breathes in amber (a slow, soft glow rather than a hard flash). The cells are animated, not
+   the row, so every browser repaints them. The table gives every row some padding at both ends, so the glow has room around the text. */
+@keyframes duetoday {
+  0%, 100% { background-color: rgb(245 158 11 / 0.07); }
+  50% { background-color: rgb(245 158 11 / 0.34); }
+}
+.due-today > td { animation: duetoday 0.9s ease-in-out infinite; }
+/* "Reduce motion" (a Windows setting that is often off on office PCs) stops every animation on the site through the rule near the top of
+   this file. This one is a slow colour fade, not movement or flashing, and it is what tells a technician a job is due, so it keeps
+   running (the !important wins over that global rule because this selector is more specific). */
+@media (prefers-reduced-motion: reduce) {
+  .due-today > td { animation-duration: 1.2s !important; animation-iteration-count: infinite !important; }
+}
+
 /* Dropdowns (see ui/select.tsx): a rounded box with a faint shadow; the list opens as a soft card. Neutral greys only, no extra colour. */
 button[data-select] {
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 12px -6px rgb(0 0 0 / 0.08);
