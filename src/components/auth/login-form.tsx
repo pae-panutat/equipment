@@ -44,33 +44,13 @@ export function LoginForm() {
       /* ignore */
     }
   };
-  // the login screen is a fixed full-screen layer: lock the document too, so the mouse wheel can never scroll the page behind it
+  // On a computer the login screen is exactly one screen tall, so lock the document: the mouse wheel can never scroll the page behind it.
+  // Phones keep normal page behaviour (their browser bars and keyboard resize the screen).
   useEffect(() => {
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
     document.documentElement.style.overflow = "hidden";
     return () => {
       document.documentElement.style.overflow = "";
-    };
-  }, []);
-  // Phones tint the browser's top and bottom bars with the theme colour (indigo for the app). On this full-screen page that made the bars look
-  // like cut-out bands, so while it is open the bars take the page's own background colour (follows the light/dark switch).
-  useEffect(() => {
-    const root = document.documentElement;
-    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    const created = !meta;
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "theme-color";
-      document.head.appendChild(meta);
-    }
-    const old = meta.content;
-    const paint = () => (meta!.content = root.classList.contains("dark") ? "#0f0b1a" : "#f6f1ff");
-    paint();
-    const watch = new MutationObserver(paint);
-    watch.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => {
-      watch.disconnect();
-      if (created) meta!.remove();
-      else meta!.content = old;
     };
   }, []);
   const [busy, setBusy] = useState(false);
@@ -90,7 +70,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="fixed inset-0 isolate grid place-items-center overflow-hidden px-4 py-3">
+    <div className="relative isolate grid min-h-dvh place-items-center overflow-hidden px-4 py-6 lg:h-dvh lg:py-3">
       <div className="login-bg" aria-hidden="true">
         <span className="login-blob left-[-10%] top-[-15%] size-[520px] bg-primary" />
         <span className="login-blob right-[-8%] top-[20%] size-[460px] bg-gold [animation-delay:-6s]" />
