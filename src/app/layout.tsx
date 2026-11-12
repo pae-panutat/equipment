@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   description: "ระบบทะเบียนอุปกรณ์และติดตามการบำรุงรักษา",
 };
 
-export const viewport: Viewport = { themeColor: "#7c3aed", viewportFit: "cover" };
+export const viewport: Viewport = { themeColor: "#5644d2", viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

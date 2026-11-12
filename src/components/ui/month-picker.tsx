@@ -5,7 +5,6 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-const SHORT = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
 /**
  * A month field that looks like the browser's own (a box with a calendar icon that opens a small calendar) but is always in
@@ -61,7 +60,7 @@ export function MonthPicker({ value, onChange, label, min, max }: { value: strin
             </button>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
-            {SHORT.map((name, i) => {
+            {MONTHS.map((name, i) => {
               const selected = year === y && i + 1 === m;
               return (
                 <button
@@ -71,7 +70,7 @@ export function MonthPicker({ value, onChange, label, min, max }: { value: strin
                   onClick={() => (onChange(key(year, i + 1)), setOpen(false))}
                   aria-label={`${MONTHS[i]} ${year + 543}`}
                   aria-pressed={selected}
-                  className={cn("min-h-9 rounded-lg text-sm transition-colors disabled:opacity-35", selected ? "bg-primary font-bold text-primary-foreground" : "text-foreground hover:bg-primary-soft hover:text-primary")}
+                  className={cn("min-h-9 rounded-lg px-1 text-[13px] transition-colors disabled:opacity-35", selected ? "bg-primary font-bold text-primary-foreground" : "text-foreground hover:bg-primary-soft hover:text-primary")}
                 >
                   {name}
                 </button>

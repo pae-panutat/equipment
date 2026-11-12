@@ -83,12 +83,13 @@ export function ItemPopup({
           {!a && !error && <Skeleton className="h-40" />}
           {a && (
             <dl className="divide-y divide-border">
-              {plan && (
-                <>
-                  <Row icon={Repeat} label="รอบ">ทุก {plan.intervalValue} {plan.intervalUnit === "month" ? "เดือน" : "วัน"}</Row>
-                  <Row icon={CalendarClock} label="สถานะแผน">{plan.active ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Row>
-                </>
-              )}
+              <Row icon={Building2} label="ส่วนงาน">{a.unit}</Row>
+              <Row icon={MapPin} label="สถานที่">{[a.location, a.locationDetail].filter(Boolean).join(" · ")}</Row>
+              <Row icon={Tag} label="ประเภท">{[a.type, [a.brand, a.model].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}</Row>
+              <Row icon={Boxes} label="อุปกรณ์">
+                <Link href={`/assets/${a.id}`} className="font-bold text-primary hover:underline">{a.code}</Link> · {a.name}
+                <span className="ml-2 inline-block align-middle"><StatusBadge status={a.status} /></span>
+              </Row>
               {job && (
                 <>
                   <Row icon={ClipboardList} label="เลขที่ใบงาน">{job.number}</Row>
@@ -97,13 +98,12 @@ export function ItemPopup({
                   <Row icon={ClipboardList} label="รายละเอียด">{job.description}</Row>
                 </>
               )}
-              <Row icon={Boxes} label="อุปกรณ์">
-                <Link href={`/assets/${a.id}`} className="font-bold text-primary hover:underline">{a.code}</Link> · {a.name}
-                <span className="ml-2 inline-block align-middle"><StatusBadge status={a.status} /></span>
-              </Row>
-              <Row icon={Tag} label="ประเภท / ยี่ห้อ รุ่น">{[a.type, [a.brand, a.model].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}</Row>
-              <Row icon={Building2} label="ส่วนงาน">{a.unit}</Row>
-              <Row icon={MapPin} label="สถานที่">{[a.location, a.locationDetail].filter(Boolean).join(" · ")}</Row>
+              {plan && (
+                <>
+                  <Row icon={CalendarClock} label="สถานะ">{plan.active ? "เปิดใช้งาน" : "ปิดใช้งาน"}</Row>
+                  <Row icon={Repeat} label="รอบ">ทุก {plan.intervalValue} {plan.intervalUnit === "month" ? "เดือน" : "วัน"}</Row>
+                </>
+              )}
             </dl>
           )}
         </div>

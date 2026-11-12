@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Boxes, Database, LayoutDashboard, LogOut, Menu, MoreHorizontal, ScanQrCode, History, CalendarDays, FileBarChart } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, LogOut, Menu, MoreHorizontal, Monitor, History, CalendarDays, FileBarChart } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
 import { RailTip } from "@/components/ui/rail-tip";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -121,7 +121,7 @@ function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
       <span className="grid size-9 shrink-0 place-items-center rounded-xl brand-mark" aria-hidden="true">
-        <ScanQrCode className="size-[18px]" />
+        <Monitor className="size-[18px]" />
       </span>
       <span className="leading-tight">
         <span className="block text-[15px] font-bold">CMU Asset</span>
@@ -178,15 +178,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="เมนูด้านข้าง"
       >
         {collapsed ? (
-          // folded: just the purple logo, which goes to the home page
+          // folded: just the logo, which goes to the home page
           <div className="flex flex-col items-center">
-            <RailTip label="CMU Asset · หน้าแรก" icon={ScanQrCode}>
+            <RailTip label="CMU Asset · หน้าแรก" icon={Monitor}>
               <Link
                 href="/"
                 aria-label="CMU Asset Maintenance — หน้าแรก"
                 className="grid size-11 shrink-0 place-items-center rounded-xl brand-mark transition-opacity hover:opacity-90"
               >
-                <ScanQrCode className="size-5" aria-hidden="true" />
+                <Monitor className="size-5" aria-hidden="true" />
               </Link>
             </RailTip>
           </div>

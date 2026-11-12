@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Activity, Boxes, ClipboardCheck, GraduationCap, ScanQrCode } from "lucide-react";
+import { Activity, Boxes, ClipboardCheck, IdCard, Monitor, ScanQrCode } from "lucide-react";
 import { safeNextPath, type AuthConfig } from "@shared/index";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -65,7 +65,7 @@ export function LoginForm() {
       <div className="login-bg" aria-hidden="true">
         <span className="login-blob left-[-10%] top-[-15%] size-[520px] bg-primary" />
         <span className="login-blob right-[-8%] top-[20%] size-[460px] bg-gold [animation-delay:-6s]" />
-        <span className="login-blob bottom-[-20%] left-[25%] size-[480px] bg-[#6366f1] [animation-delay:-12s]" />
+        <span className="login-blob bottom-[-20%] left-[25%] size-[480px] bg-[#5238ea] [animation-delay:-12s]" />
       </div>
       <div className="absolute right-4 top-4 z-10">
         <ThemeToggle />
@@ -73,7 +73,7 @@ export function LoginForm() {
       <div className="grid w-full max-w-[1040px] items-center gap-10 lg:grid-cols-[1.1fr_420px] lg:gap-16">
         <div className="hidden lg:block">
           <span className="inline-grid size-16 place-items-center rounded-2xl brand-mark shadow-[0_12px_40px_-8px_var(--primary)]" aria-hidden="true">
-            <ScanQrCode className="size-9" />
+            <Monitor className="size-9" />
           </span>
           <h2 className="login-title mt-6 text-5xl font-bold leading-[1.15] tracking-[-0.02em]">
             ทะเบียนครุภัณฑ์
@@ -101,7 +101,7 @@ export function LoginForm() {
         <div className="w-full max-w-[420px] justify-self-center">
         <div className="mb-6 flex items-center justify-center gap-2.5 lg:hidden">
           <span className="grid size-11 place-items-center rounded-xl brand-mark" aria-hidden="true">
-            <ScanQrCode className="size-6" />
+            <Monitor className="size-6" />
           </span>
           <span className="leading-tight">
             <span className="block text-base font-bold">CMU Asset</span>
@@ -129,7 +129,7 @@ export function LoginForm() {
             }}
             className="text-sm mt-5 flex min-h-9 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
           >
-            <GraduationCap className="size-5" aria-hidden="true" />
+            <IdCard className="size-5" aria-hidden="true" />
             เข้าสู่ระบบด้วย CMU Account
           </a>
           <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground" aria-hidden="true">

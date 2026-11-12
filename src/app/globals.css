@@ -3,57 +3,57 @@
 /* Theme switch: the `dark` class on <html> (light is the default, see layout.tsx). */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Design tokens: a vivid modern purple (with a violet-to-fuchsia gradient) as the main colour. Green/amber/red stay reserved for status. */
+/* Design tokens: an indigo-blue #5357ac (with a gradient of its own shades) as the main colour. Green/amber/red stay reserved for status. */
 :root {
   color-scheme: light;
-  --background: #faf8ff;
-  --foreground: #1b1033;
+  --background: #f6f1ff;
+  --foreground: #1e143a;
   --card: #ffffff;
-  --card-foreground: #1b1033;
+  --card-foreground: #1e143a;
   --popover: #ffffff;
-  --popover-foreground: #1b1033;
-  --muted: #f3eefe;
-  --muted-foreground: #5e5478;
-  --border: #e7defa;
-  --primary: #7c3aed;
-  --primary-soft: #f0e8ff;
+  --popover-foreground: #1e143a;
+  --muted: #f0e5ff;
+  --muted-foreground: #5f5578;
+  --border: #d5c4ff;
+  --primary: #5644d2;
+  --primary-soft: #e8dcff;
   --primary-foreground: #ffffff;
-  --gold: #d946ef;
-  --grad: linear-gradient(135deg, #6d28d9 0%, #8b3dff 50%, #c026d3 100%);
-  --ring: #8b5cf6;
+  --gold: #a28aff;
+  --grad: linear-gradient(135deg, #5238ea 0%, #6450ff 50%, #a28aff 100%);
+  --ring: #6450ff;
   --ok: #15803d;
   --ok-soft: #dcfce7;
   --warn: #b45309;
   --warn-soft: #fef3c7;
   --bad: #b91c1c;
   --bad-soft: #fee2e2;
-  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%237c3aed'%20stroke-opacity%3D'0.09'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
+  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%236250d8'%20stroke-opacity%3D'0.09'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
 }
 
 .dark {
   color-scheme: dark;
-  --background: #0c0716;
-  --foreground: #f6f1ff;
-  --card: #160d27;
-  --card-foreground: #f6f1ff;
-  --popover: #20133a;
-  --popover-foreground: #f6f1ff;
-  --muted: #21153a;
-  --muted-foreground: #b4a7cc;
-  --border: #35235a;
-  --primary: #a97bff;
-  --primary-soft: #321e63;
-  --primary-foreground: #12062a;
-  --gold: #e879f9;
-  --grad: linear-gradient(135deg, #8b5cf6 0%, #b07cff 50%, #f0abfc 110%);
-  --ring: #a97bff;
+  --background: #0f0b1a;
+  --foreground: #f3f0ff;
+  --card: #17122a;
+  --card-foreground: #f3f0ff;
+  --popover: #211a3a;
+  --popover-foreground: #f3f0ff;
+  --muted: #231b3b;
+  --muted-foreground: #afa5cc;
+  --border: #45349a;
+  --primary: #b0a0ff;
+  --primary-soft: #3b2ba0;
+  --primary-foreground: #130d28;
+  --gold: #ccbcff;
+  --grad: linear-gradient(135deg, #5b45f7 0%, #8a72ff 50%, #ccbcff 110%);
+  --ring: #b0a0ff;
   --ok: #4ade80;
   --ok-soft: #12301f;
   --warn: #fbbf24;
   --warn-soft: #382a0a;
   --bad: #f87171;
   --bad-soft: #3b1414;
-  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%23c4a5ff'%20stroke-opacity%3D'0.08'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
+  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%23b1a3ea'%20stroke-opacity%3D'0.08'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
 }
 
 /* Tighter line spacing site-wide (Tailwind defaults are 1.43-1.5 for text-sm/base). Kept above 1.2 so Thai tone marks and vowels never clip. */
@@ -206,7 +206,7 @@ button[data-select][aria-expanded="true"] {
   border-color: color-mix(in oklab, var(--border) 55%, var(--foreground) 45%);
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--foreground) 8%, transparent), 0 4px 14px -6px rgb(0 0 0 / 0.12);
 }
-/* Every card has a thin purple gradient line on its top-left corner that fades out along the top and the left edge. It stays still;
+/* Every card has a thin indigo gradient line on its top-left corner that fades out along the top and the left edge. It stays still;
    when the mouse rests on a card the glow widens and slides a little along the edges, and eases back when the mouse leaves. */
 @property --edge-s { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
 @property --edge-x { syntax: "<length>"; inherits: false; initial-value: 0px; }
@@ -253,7 +253,7 @@ button[data-select][aria-expanded="true"] {
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 14%, transparent), 0 8px 24px -14px color-mix(in oklab, var(--primary) 55%, transparent);
 }
 
-/* The card that holds the filters is the main control of a page: a very faint purple wash over the card colour. */
+/* The card that holds the filters is the main control of a page: a very faint indigo wash over the card colour. */
 .filter-card {
   background-image: linear-gradient(135deg, color-mix(in oklab, var(--primary) 10%, transparent), color-mix(in oklab, var(--gold) 7%, transparent));
   border-color: color-mix(in oklab, var(--primary) 25%, var(--border));
@@ -288,15 +288,15 @@ input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="
 body {
   background-color: var(--background);
   background-image:
-    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 70%),
-    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, var(--gold) 14%, transparent), transparent 70%);
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, var(--primary) 38%, transparent), transparent 70%),
+    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, var(--gold) 34%, transparent), transparent 70%);
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
 .dark body {
   background-image:
-    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, #7c3aed 50%, transparent), transparent 70%),
-    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, #c026d3 32%, transparent), transparent 70%);
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, #5b45f7 64%, transparent), transparent 70%),
+    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, #a28aff 42%, transparent), transparent 70%);
 }
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -305,8 +305,8 @@ body::before {
 }
 /* Anything filled with the main colour (buttons, badges, tags) gets the gradient. */
 .bg-primary { background-image: var(--grad); }
-/* A thin purple-to-fuchsia line under the top bar. */
+/* A thin indigo line under the top bar. */
 .brand-line { position: relative; }
 .brand-line::after { content: ""; position: absolute; inset: auto 0 -1px 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--gold) 55%, transparent); }
-/* The logo tile: always the vivid purple gradient, whatever the theme. */
-.brand-mark { background: linear-gradient(135deg, #6d28d9 0%, #8b3dff 50%, #d946ef 100%); color: #fff; }
+/* The logo tile: always the indigo gradient, whatever the theme. */
+.brand-mark { background: linear-gradient(135deg, #5238ea 0%, #6450ff 50%, #a28aff 100%); color: #fff; }

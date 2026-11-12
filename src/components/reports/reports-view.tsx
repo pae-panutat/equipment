@@ -11,12 +11,15 @@ import { apiGet } from "@/lib/api";
 import { downloadCsv } from "@/lib/csv";
 import { formatDate, formatMonth, formatNumber } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
+import { Tooltip, useTip, type TipRef } from "@/components/dashboard/bento";
 
 type Summary = { from: string; to: string; generatedOn: string; rows: { month: string; unit: string; kind: WorkOrderKind; count: number }[] };
 type Register = {
   generatedOn: string;
   rows: Record<"code" | "name" | "type" | "unit" | "status" | "brand" | "model" | "serialNumber" | "legacyAssetNo" | "location" | "installDate" | "purchaseDate" | "warrantyEnd" | "lastMaintenance" | "nextDue", string>[];
 };
+
+const KIND_COLOR: Record<WorkOrderKind, string> = { planned: "var(--primary)", repair: "#ff7a45", inspection: "#18b8a6" };
 
 const thisMonth = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }).slice(0, 7);
 const back = (ym: string, n: number) => {
@@ -30,6 +33,8 @@ export function ReportsView() {
   const [to, setTo] = useState(thisMonth());
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [busy, setBusy] = useState(false);
+  const [showTable, setShowTable] = useState(false);
+  const tip = useTip();
   const [problem, setProblem] = useState<string | null>(null);
   const valid = from <= to;
   const { data, error, loading, reload } = useApi<Summary>(valid ? "/reports/work-summary" : "/pulse", valid ? { from, to, ...filters } : undefined);
@@ -47,7 +52,15 @@ export function ReportsView() {
       kinds.set(r.kind, (kinds.get(r.kind) ?? 0) + r.count);
     }
     const total = data.rows.reduce((s, r) => s + r.count, 0);
-    return { months, units, cell, kinds, total };
+    const monthKind = new Map<string, number>();
+    const unitKind = new Map<string, number>();
+    for (const r of data.rows) {
+      monthKind.set(`${r.month}|${r.kind}`, (monthKind.get(`${r.month}|${r.kind}`) ?? 0) + r.count);
+      unitKind.set(`${r.unit}|${r.kind}`, (unitKind.get(`${r.unit}|${r.kind}`) ?? 0) + r.count);
+    }
+    const unitTotal = (u: string) => WORK_ORDER_KINDS.reduce((a, k) => a + (unitKind.get(`${u}|${k}`) ?? 0), 0);
+    const rankedUnits = [...units].sort((a, b) => unitTotal(b) - unitTotal(a)).map((u) => ({ name: u, total: unitTotal(u) }));
+    return { months, units, cell, kinds, total, monthKind, unitKind, rankedUnits };
   }, [data, valid]);
 
   function exportSummary() {
@@ -82,6 +95,7 @@ export function ReportsView() {
 
   return (
     <div className="grid gap-5">
+      <Tooltip api={tip} />
       <div className="print:hidden">
         <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">รายงาน</h1>
         <p className="mt-1 text-muted-foreground">สรุปงานบำรุงรักษาที่เสร็จสิ้น และส่งออกทะเบียนอุปกรณ์</p>
@@ -112,8 +126,47 @@ export function ReportsView() {
 
         {error && valid && <ErrorState message={error} onRetry={reload} />}
         {loading && !table && valid && <Skeleton className="mt-4 h-48" />}
-        {table && (
-          <div className="mt-4">
+        {table && table.total === 0 && <p className="py-10 text-center text-sm text-muted-foreground">ไม่มีงานที่เสร็จสิ้นในช่วงนี้</p>}
+        {table && table.total > 0 && (
+          <div className="mt-5 grid gap-6">
+            {/* the big picture: total, share of each kind as a ring */}
+            <div className="grid items-center gap-5 rounded-2xl border border-border bg-muted/40 p-4 sm:grid-cols-[auto_1fr] sm:gap-8 sm:p-5">
+              <Donut tip={tip} parts={WORK_ORDER_KINDS.map((k) => ({ label: WORK_ORDER_KIND_LABEL[k], value: table.kinds.get(k) ?? 0, color: KIND_COLOR[k] }))} total={table.total} />
+              <div className="grid gap-3">
+                {WORK_ORDER_KINDS.map((k) => {
+                  const n = table.kinds.get(k) ?? 0;
+                  const pct = table.total ? Math.round((n / table.total) * 100) : 0;
+                  return (
+                    <div key={k}>
+                      <div className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="flex items-center gap-2 font-medium"><span className="size-3 rounded-full" style={{ background: KIND_COLOR[k] }} />{WORK_ORDER_KIND_LABEL[k]}</span>
+                        <span className="tabular text-muted-foreground"><b className="text-base text-foreground">{formatNumber(n)}</b> งาน · {pct}%</span>
+                      </div>
+                      <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-border/60"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: KIND_COLOR[k] }} /></div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* jobs per month: stacked columns */}
+            <section>
+              <h3 className="mb-3 text-base font-bold">จำนวนงานในแต่ละเดือน</h3>
+              <MonthChart tip={tip} months={table.months} monthKind={table.monthKind} />
+            </section>
+
+            {/* jobs per unit: stacked bars, biggest first */}
+            <section>
+              <h3 className="mb-3 text-base font-bold">จำนวนงานแยกตามส่วนงาน</h3>
+              <UnitBars tip={tip} units={table.rankedUnits} unitKind={table.unitKind} />
+            </section>
+
+            <div className="print:hidden">
+              <button type="button" onClick={() => setShowTable((v) => !v)} className="text-sm font-bold text-primary hover:underline" aria-expanded={showTable}>
+                {showTable ? "ซ่อนตารางตัวเลข" : "ดูตารางตัวเลขละเอียด"}
+              </button>
+            </div>
+            <div className={showTable ? "" : "hidden print:block"}>
             {/* phone: a card per unit */}
             <div className="grid gap-3 md:hidden print:hidden">
               {table.units.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">ไม่มีงานที่เสร็จสิ้นในช่วงนี้</p>}
@@ -126,7 +179,7 @@ export function ReportsView() {
                   <div className="grid grid-cols-4 gap-1.5">
                     {table.months.map((m, i) => (
                       <div key={m} className={`rounded-lg bg-card px-1 py-1 text-center ${r.vals[i] ? "" : "opacity-50"}`}>
-                        <div className="text-[10px] leading-tight text-muted-foreground">{formatMonth(m)}</div>
+                        <div className="text-[10px] leading-tight text-muted-foreground">{formatMonth(m).split(" ")[0]}</div>
                         <div className="tabular text-sm font-bold">{formatNumber(r.vals[i])}</div>
                       </div>
                     ))}
@@ -151,8 +204,7 @@ export function ReportsView() {
                     const [mo, yr] = formatMonth(m).split(" ");
                     return (
                       <th key={m} className="px-0.5 py-2 text-right font-normal leading-tight">
-                        <span className="block">{mo}</span>
-                        <span className="block text-[10px] opacity-70">{yr}</span>
+                        <span className="inline-block rotate-180 whitespace-nowrap [writing-mode:vertical-rl]">{mo} <span className="text-[10px] opacity-70">{yr}</span></span>
                       </th>
                     );
                   })}
@@ -184,9 +236,7 @@ export function ReportsView() {
                 </tr>
               </tbody>
             </table>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {WORK_ORDER_KINDS.map((k) => `${WORK_ORDER_KIND_LABEL[k]} ${formatNumber(table.kinds.get(k) ?? 0)} งาน`).join(" · ")}
-            </p>
+            </div>
           </div>
         )}
       </Card>
@@ -198,6 +248,113 @@ export function ReportsView() {
         </div>
         <p className="mt-1 text-sm text-muted-foreground">รายการอุปกรณ์ทั้งหมดตามตัวกรองด้านบน (สูงสุด 5,000 รายการ) พร้อมวันที่ติดตั้ง ประกัน และรอบบำรุงรักษา</p>
       </Card>
+    </div>
+  );
+}
+
+/** tooltip rows for a stack: one line per kind of job, then the total */
+function kindRows(get: (k: WorkOrderKind) => number) {
+  const total = WORK_ORDER_KINDS.reduce((a, k) => a + get(k), 0);
+  return [...WORK_ORDER_KINDS.map((k) => ({ label: WORK_ORDER_KIND_LABEL[k], value: `${formatNumber(get(k))} งาน`, color: KIND_COLOR[k] })), { label: "รวม", value: `${formatNumber(total)} งาน` }];
+}
+
+const SHORT_MONTH = (m: string) => formatMonth(m).split(" ")[0];
+
+/** A ring showing each part's share, with the total in the middle. */
+function Donut({ parts, total, tip }: { parts: { label: string; value: number; color: string }[]; total: number; tip: TipRef }) {
+  const R = 52;
+  const C = 2 * Math.PI * R;
+  let offset = 0;
+  return (
+    <div className="relative mx-auto size-40 shrink-0">
+      <svg viewBox="0 0 140 140" className="size-full -rotate-90" role="img" aria-label="สัดส่วนงานแยกตามประเภท">
+        <circle cx="70" cy="70" r={R} fill="none" stroke="var(--border)" strokeWidth="20" />
+        {parts.map((p, i) => {
+          const len = total ? (p.value / total) * C : 0;
+          const el = <circle key={i} cx="70" cy="70" r={R} fill="none" stroke={p.color} strokeWidth="20" strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-offset} className="cursor-pointer transition-opacity hover:opacity-80" onPointerMove={(e) => tip.current?.show(e.clientX, e.clientY, { title: p.label, rows: [{ label: "จำนวน", value: `${formatNumber(p.value)} งาน`, color: p.color }, { label: "สัดส่วน", value: `${total ? Math.round((p.value / total) * 100) : 0}%` }] })} onPointerLeave={() => tip.current?.hide()} />;
+          offset += len;
+          return el;
+        })}
+      </svg>
+      <div className="absolute inset-0 grid place-content-center text-center">
+        <div className="tabular text-3xl font-bold leading-none">{formatNumber(total)}</div>
+        <div className="mt-1 text-xs text-muted-foreground">งานทั้งหมด</div>
+      </div>
+    </div>
+  );
+}
+
+/** One column per month; each column is stacked by kind of job. */
+function MonthChart({ months, monthKind, tip }: { months: string[]; monthKind: Map<string, number>; tip: TipRef }) {
+  const totals = months.map((m) => WORK_ORDER_KINDS.reduce((a, k) => a + (monthKind.get(`${m}|${k}`) ?? 0), 0));
+  const max = Math.max(1, ...totals);
+  return (
+    <div>
+      <div className="flex h-52 items-end gap-1 border-b border-border sm:gap-2" role="img" aria-label="กราฟแท่งจำนวนงานแต่ละเดือน">
+        {months.map((m, i) => (
+          <div
+            key={m}
+            className="flex h-full min-w-0 flex-1 cursor-pointer flex-col justify-end rounded-t-lg hover:bg-primary/10"
+            onPointerMove={(e) => tip.current?.show(e.clientX, e.clientY, { title: formatMonth(m), rows: kindRows((k) => monthKind.get(`${m}|${k}`) ?? 0) })}
+            onPointerLeave={() => tip.current?.hide()}
+          >
+            <div className="tabular mb-1 text-center text-[11px] font-bold sm:text-xs">{totals[i] ? formatNumber(totals[i]) : ""}</div>
+            <div className="flex w-full flex-col-reverse overflow-hidden rounded-t-lg" style={{ height: `${(totals[i] / max) * 85}%` }}>
+              {WORK_ORDER_KINDS.map((k) => {
+                const n = monthKind.get(`${m}|${k}`) ?? 0;
+                return n ? <div key={k} style={{ flexGrow: n, background: KIND_COLOR[k] }} /> : null;
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-1 sm:gap-2">
+        {months.map((m) => (
+          <div key={m} className={`min-w-0 flex-1 whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground sm:text-xs ${months.length > 12 ? "[writing-mode:vertical-rl]" : "[writing-mode:vertical-rl] sm:[writing-mode:horizontal-tb]"}`}>{SHORT_MONTH(m)}</div>
+        ))}
+      </div>
+      <Legend />
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      {WORK_ORDER_KINDS.map((k) => (
+        <span key={k} className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: KIND_COLOR[k] }} />{WORK_ORDER_KIND_LABEL[k]}</span>
+      ))}
+    </div>
+  );
+}
+
+/** A horizontal bar per unit, longest first, stacked by kind of job. */
+function UnitBars({ units, unitKind, tip }: { units: { name: string; total: number }[]; unitKind: Map<string, number>; tip: TipRef }) {
+  const max = Math.max(1, ...units.map((u) => u.total));
+  return (
+    <div>
+      <div className="grid gap-2.5">
+        {units.map((u) => (
+          <div
+            key={u.name}
+            className="grid cursor-pointer items-center gap-x-3 gap-y-1 rounded-lg px-1.5 py-1 hover:bg-primary/10 sm:grid-cols-[minmax(0,14rem)_1fr]"
+            onPointerMove={(e) => tip.current?.show(e.clientX, e.clientY, { title: u.name, rows: kindRows((k) => unitKind.get(`${u.name}|${k}`) ?? 0) })}
+            onPointerLeave={() => tip.current?.hide()}
+          >
+            <div className="min-w-0 break-words text-sm leading-snug">{u.name}</div>
+            <div className="flex items-center gap-2">
+              <div className="flex h-5 overflow-hidden rounded-full bg-border/40" style={{ width: `${Math.max(3, (u.total / max) * 100)}%` }}>
+                {WORK_ORDER_KINDS.map((k) => {
+                  const n = unitKind.get(`${u.name}|${k}`) ?? 0;
+                  return n ? <div key={k} style={{ flexGrow: n, background: KIND_COLOR[k] }} /> : null;
+                })}
+              </div>
+              <span className="tabular shrink-0 text-sm font-bold">{formatNumber(u.total)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Legend />
     </div>
   );
 }

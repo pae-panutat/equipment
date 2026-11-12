@@ -204,7 +204,7 @@ export function LineChart({ series, caption, unit, tip }: { series: LinePoint[];
           {[0, Math.floor((n - 1) / 2), n - 1]
             .filter((i, k, a) => a.indexOf(i) === k)
             .map((i) => (
-              <text key={i} x={Math.min(Math.max(P[i][0], 24), W - 24)} y={H - 4} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
+              <text key={i} x={Math.min(Math.max(P[i][0], 40), W - 40)} y={H - 4} textAnchor="middle" fontSize={10} className="fill-muted-foreground">
                 {series[i].label}
               </text>
             ))}

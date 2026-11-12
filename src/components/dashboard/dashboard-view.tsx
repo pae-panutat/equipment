@@ -59,7 +59,7 @@ function DashboardSkeleton() {
 }
 
 const PALETTE: { color: string; ink: "dark" | "light" }[] = [
-  { color: "#8B3DFF", ink: "light" },
+  { color: "#5644d2", ink: "light" },
   { color: "#7CFF5B", ink: "dark" },
   { color: "#FFB800", ink: "dark" },
   { color: "#FF5A1F", ink: "dark" },
