@@ -51,6 +51,28 @@ export function LoginForm() {
       document.documentElement.style.overflow = "";
     };
   }, []);
+  // Phones tint the browser's top and bottom bars with the theme colour (indigo for the app). On this full-screen page that made the bars look
+  // like cut-out bands, so while it is open the bars take the page's own background colour (follows the light/dark switch).
+  useEffect(() => {
+    const root = document.documentElement;
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const created = !meta;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.appendChild(meta);
+    }
+    const old = meta.content;
+    const paint = () => (meta!.content = root.classList.contains("dark") ? "#0f0b1a" : "#f6f1ff");
+    paint();
+    const watch = new MutationObserver(paint);
+    watch.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => {
+      watch.disconnect();
+      if (created) meta!.remove();
+      else meta!.content = old;
+    };
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(ERRORS[sp.get("error") ?? ""] ?? null);
 
