@@ -15,14 +15,16 @@ const ENTITIES = [
   { value: "photo", label: "รูปภาพ" },
   { value: "import", label: "นำเข้าข้อมูล" },
 ];
-const PAGE = 30;
+const PAGE = 10;
+const todayBangkok = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
 
 /** Super Admin: the edit history of the whole system. */
 export function AuditView() {
   const [entity, setEntity] = useState("");
   const [page, setPage] = useState(1);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  // opens on today only (10 lines a page); the person widens or moves the period themselves
+  const [from, setFrom] = useState(todayBangkok);
+  const [to, setTo] = useState(todayBangkok);
   const badRange = from !== "" && to !== "" && from > to;
   const { data, error, loading, reload } = useApi<Paged<HistoryItem>>("/audit", { entity: entity || undefined, from: from || undefined, to: to || undefined, page, pageSize: PAGE }, { live: true });
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE)) : 1;
@@ -57,9 +59,14 @@ export function AuditView() {
             ถึงวันที่
             <input type="date" value={to} min={from || undefined} onChange={(e) => (setTo(e.target.value), setPage(1))} className="min-h-11 rounded-xl border border-border bg-card px-3 text-[15px] text-foreground" />
           </label>
+          {(from !== todayBangkok() || to !== todayBangkok()) && (
+            <button type="button" onClick={() => (setFrom(todayBangkok()), setTo(todayBangkok()), setPage(1))} className="text-sm min-h-11 rounded-xl border border-border px-3.5 hover:bg-muted">
+              วันนี้
+            </button>
+          )}
           {(from || to) && (
             <button type="button" onClick={() => (setFrom(""), setTo(""), setPage(1))} className="text-sm min-h-11 rounded-xl border border-border px-3.5 hover:bg-muted">
-              ล้างช่วงวันที่
+              ดูทั้งหมด
             </button>
           )}
         </div>
