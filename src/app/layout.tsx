@@ -22,6 +22,8 @@ const lineSeed = localFont({
 export const metadata: Metadata = {
   title: "CMU Asset & Maintenance",
   description: "ระบบทะเบียนอุปกรณ์และติดตามการบำรุงรักษา",
+  // The icons live in public/ (that folder is what reaches the host); ?v= makes browsers drop the old cached icon.
+  icons: { icon: [{ url: "/favicon.ico?v=2", sizes: "48x48" }, { url: "/icons/icon-192.png?v=2", sizes: "192x192", type: "image/png" }] },
 };
 
 export const viewport: Viewport = { themeColor: "#5644d2", viewportFit: "cover" };
