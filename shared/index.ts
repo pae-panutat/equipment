@@ -47,7 +47,7 @@ export type DashboardSummary = {
   byStatus: { status: AssetStatus; count: number }[];
   maintenance: { overdue: number; dueSoon: number; noPlan: number };
   completedByMonth: { month: string; count: number }[];
-  upcoming: { planId: number; assetId: number; assetCode: string; assetName: string; unitName: string; title: string; dueDate: string; overdue: boolean }[];
+  upcoming: { planId: number; assetId: number; assetCode: string; assetName: string; unitName: string; title: string; dueDate: string; overdue: boolean; inProgress: boolean }[];
   recent: { id: number; number: string; assetId: number; assetCode: string; assetName: string; title: string; kind: WorkOrderKind; status: WorkOrderStatus; at: string }[];
 };
 

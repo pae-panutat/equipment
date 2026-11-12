@@ -199,13 +199,13 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
                 </tr>
               </thead>
               <tbody>
-                {/* what is due today comes first (and blinks), then the rest in the order the server sent them */}
-                {[...data.upcoming.filter((u) => u.dueDate === data.asOf), ...data.upcoming.filter((u) => u.dueDate !== data.asOf)].map((u) => {
+                {/* what is due today and not yet started comes first (and blinks); once someone has opened a job for the plan it stops blinking */}
+                {[...data.upcoming.filter((u) => u.dueDate === data.asOf && !u.inProgress), ...data.upcoming.filter((u) => !(u.dueDate === data.asOf && !u.inProgress))].map((u) => {
                   // the whole row is a link (every cell links to the same place; only the first one is a tab stop)
                   const href = canRecord ? `/assets/${u.assetId}?plan=${u.planId}` : `/assets/${u.assetId}`;
                   const cell = "block py-2.5";
                   return (
-                    <tr key={`${u.planId}-${u.dueDate}`} className={cn("border-t border-border transition-colors hover:bg-muted/50", u.dueDate === data.asOf && "due-today")}>
+                    <tr key={`${u.planId}-${u.dueDate}`} className={cn("border-t border-border transition-colors hover:bg-muted/50", u.dueDate === data.asOf && !u.inProgress && "due-today")}>
                       <td className="pl-3 pr-3">
                         <Link href={href} className={cell} aria-label={`${canRecord ? "บันทึกงาน" : "ดูอุปกรณ์"} ${u.assetCode} ${u.title} กำหนด ${formatDate(u.dueDate)}`}>
                           <span className="block font-bold text-primary">{u.assetCode}</span>
@@ -224,10 +224,10 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
                           <span className="tabular block">{formatDate(u.dueDate)}</span>
                           {(() => {
                             const days = Math.round((Date.parse(`${u.dueDate}T00:00:00Z`) - Date.parse(`${data.asOf}T00:00:00Z`)) / 86_400_000);
-                            const tone = u.overdue ? TONE.overdue : TONE.soon;
+                            const tone = u.inProgress ? TONE.plan : u.overdue ? TONE.overdue : TONE.soon;
                             return (
                               <span className={cn("mt-0.5 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold", tone.chip)}>
-                                {days === 0 && !u.overdue ? (
+                                {days === 0 && !u.overdue && !u.inProgress ? (
                                   <span className="relative flex size-2" aria-hidden="true">
                                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-400 opacity-75" />
                                     <span className="relative inline-flex size-2 rounded-full bg-amber-500" />
@@ -235,7 +235,7 @@ function Content({ data, filters, fresh }: { data: DashboardSummary; filters: Fi
                                 ) : (
                                   <i className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden="true" />
                                 )}
-                                {u.overdue ? `เกินกำหนด ${Math.abs(days)} วัน` : days === 0 ? "ครบกำหนดวันนี้" : `ใกล้ครบกำหนด อีก ${days} วัน`}
+                                {u.inProgress ? "กำลังดำเนินการแล้ว" : u.overdue ? `เกินกำหนด ${Math.abs(days)} วัน` : days === 0 ? "ครบกำหนดวันนี้" : `ใกล้ครบกำหนด อีก ${days} วัน`}
                               </span>
                             );
                           })()}
