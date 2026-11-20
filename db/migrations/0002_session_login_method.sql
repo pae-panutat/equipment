@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD `method` varchar(8) DEFAULT 'local' NOT NULL;

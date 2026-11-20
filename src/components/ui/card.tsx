@@ -1,0 +1,36 @@
+import { cn } from "@/lib/utils";
+
+export function Card({ className, ...props }: React.ComponentProps<"section">) {
+  return <section className={cn("card-edge min-w-0 rounded-[28px] border border-border bg-card p-5 text-card-foreground shadow-sm dark:bg-card/65 dark:backdrop-blur-md sm:p-6", className)} {...props} />;
+}
+
+export function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
+  return <h2 className={cn("text-[17px] font-bold tracking-[-0.01em]", className)} {...props} />;
+}
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded-xl bg-muted", className)} aria-hidden="true" />;
+}
+
+export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="grid place-items-center gap-1 rounded-2xl border border-dashed border-border px-4 py-8 text-center">
+      <p className="font-bold">{title}</p>
+      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div role="alert" className="grid place-items-center gap-2 rounded-2xl border border-bad/30 bg-bad-soft px-4 py-8 text-center text-bad">
+      <p className="font-bold">โหลดข้อมูลไม่สำเร็จ</p>
+      <p className="text-sm">{message}</p>
+      {onRetry && (
+        <button type="button" onClick={onRetry} className="min-h-9 rounded-xl bg-bad px-3.5 text-sm font-bold text-white">
+          ลองอีกครั้ง
+        </button>
+      )}
+    </div>
+  );
+}

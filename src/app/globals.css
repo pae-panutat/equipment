@@ -1,0 +1,420 @@
+@import "tailwindcss";
+
+/* Theme switch: the `dark` class on <html> (light is the default, see layout.tsx). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens: an indigo-blue #5357ac (with a gradient of its own shades) as the main colour. Green/amber/red stay reserved for status. */
+:root {
+  color-scheme: light;
+  --background: #f6f1ff;
+  --foreground: #1e143a;
+  --card: #ffffff;
+  --card-foreground: #1e143a;
+  --popover: #ffffff;
+  --popover-foreground: #1e143a;
+  --muted: #f0e5ff;
+  --muted-foreground: #5f5578;
+  --border: #d5c4ff;
+  --primary: #5644d2;
+  --primary-soft: #e8dcff;
+  --primary-foreground: #ffffff;
+  --gold: #a28aff;
+  --grad: linear-gradient(135deg, #5238ea 0%, #6450ff 50%, #a28aff 100%);
+  --ring: #6450ff;
+  --ok: #15803d;
+  --ok-soft: #dcfce7;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --bad: #b91c1c;
+  --bad-soft: #fee2e2;
+  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%236250d8'%20stroke-opacity%3D'0.09'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0f0b1a;
+  --foreground: #f3f0ff;
+  --card: #17122a;
+  --card-foreground: #f3f0ff;
+  --popover: #211a3a;
+  --popover-foreground: #f3f0ff;
+  --muted: #231b3b;
+  --muted-foreground: #afa5cc;
+  --border: #45349a;
+  --primary: #b0a0ff;
+  --primary-soft: #3b2ba0;
+  --primary-foreground: #130d28;
+  --gold: #ccbcff;
+  --grad: linear-gradient(135deg, #5b45f7 0%, #8a72ff 50%, #ccbcff 110%);
+  --ring: #b0a0ff;
+  --ok: #4ade80;
+  --ok-soft: #12301f;
+  --warn: #fbbf24;
+  --warn-soft: #382a0a;
+  --bad: #f87171;
+  --bad-soft: #3b1414;
+  --geo: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'69.282'%20height%3D'120'%20viewBox%3D'0%200%2069.282%20120'%3E%3Cpath%20d%3D'M0.00%20-40.00L34.64%20-20.00L34.64%2020.00L0.00%2040.00L-34.64%2020.00L-34.64%20-20.00ZM-34.64%20-20.00L0.00%200.00L34.64%20-20.00M0.00%200.00L0.00%2040.00M69.28%20-40.00L103.92%20-20.00L103.92%2020.00L69.28%2040.00L34.64%2020.00L34.64%20-20.00ZM34.64%20-20.00L69.28%200.00L103.92%20-20.00M69.28%200.00L69.28%2040.00M0.00%2080.00L34.64%20100.00L34.64%20140.00L0.00%20160.00L-34.64%20140.00L-34.64%20100.00ZM-34.64%20100.00L0.00%20120.00L34.64%20100.00M0.00%20120.00L0.00%20160.00M69.28%2080.00L103.92%20100.00L103.92%20140.00L69.28%20160.00L34.64%20140.00L34.64%20100.00ZM34.64%20100.00L69.28%20120.00L103.92%20100.00M69.28%20120.00L69.28%20160.00M34.64%2020.00L69.28%2040.00L69.28%2080.00L34.64%20100.00L0.00%2080.00L0.00%2040.00ZM0.00%2040.00L34.64%2060.00L69.28%2040.00M34.64%2060.00L34.64%20100.00'%20fill%3D'none'%20stroke%3D'%23b1a3ea'%20stroke-opacity%3D'0.08'%20stroke-width%3D'1'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E");
+}
+
+/* Tighter line spacing site-wide (Tailwind defaults are 1.43-1.5 for text-sm/base). Kept above 1.2 so Thai tone marks and vowels never clip. */
+@theme {
+  --text-xs--line-height: 1.3;
+  --text-sm--line-height: 1.35;
+  --text-base--line-height: 1.4;
+  --text-lg--line-height: 1.35;
+  --text-xl--line-height: 1.3;
+  --text-2xl--line-height: 1.25;
+  --text-3xl--line-height: 1.2;
+  --text-4xl--line-height: 1.2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-gold: var(--gold);
+  --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-line-seed), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 26px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /* The page never slides sideways: nothing may stick out past the screen (clip, unlike hidden, keeps sticky headers working). */
+  overflow-x: clip;
+  max-width: 100%;
+  overscroll-behavior-x: none;
+}
+
+/* iPhone and iPad zoom the whole page in when a text field smaller than 16px is tapped, and leave it zoomed and shifted off-centre
+   after signing in. Fields on touch screens are therefore at least 16px. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+body {
+  overflow-x: clip;
+  max-width: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* keep numbers aligned in tables and tiles */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Browsers without dynamic viewport units (iOS Safari < 15.4, Chrome < 108) ignore the dvh classes: use vh there instead. */
+@supports not (height: 100dvh) {
+  .h-dvh { height: 100vh; }
+  .min-h-dvh { min-height: 100vh; }
+  .max-h-\[92dvh\] { max-height: 92vh; }
+  .max-h-\[68dvh\] { max-height: 68vh; }
+}
+
+/* Clickable controls show the hand cursor (Tailwind v4 resets buttons to the default arrow). */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}
+
+/* Loading bar: a thin sliding stripe at the top while requests are running */
+@keyframes loadbar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+.loadbar-stripe {
+  animation: loadbar 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loadbar-stripe { animation: none; width: 100%; opacity: 0.7; }
+}
+
+/* Dimmed page area while a folded-sidebar item is hovered */
+@keyframes railfade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.railfade {
+  animation: railfade 0.15s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .railfade { animation: none; }
+}
+/* Items in a list swell a little under the pointer and settle back when it leaves, both ways with the same soft ease (no overshoot).
+   .grow is for cards and short items, .grow-row for wide rows (a table row, a full-width line), which swell less so the row does not
+   push past its card. Pointer devices only: on a touch screen there is no hover to hold the swollen state. */
+.grow, .grow-row {
+  position: relative;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s ease, background-color 0.3s ease, z-index 0.45s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .grow:hover {
+    transform: scale(1.03);
+    z-index: 10;
+    box-shadow: 0 16px 36px -20px color-mix(in oklab, var(--foreground) 50%, transparent);
+  }
+  .grow-row:hover {
+    transform: scale(1.012);
+    z-index: 10;
+  }
+}
+
+/* A table inside a scrolling box: the row that swells would poke past the box and make a scrollbar appear while the mouse is on it.
+   The box gets 1% of slack on each side and a few px at the bottom, each taken back with a negative margin so nothing moves. (Only the
+   bottom: the top margin is set per page, and an overflow upwards cannot be scrolled to anyway.) */
+.grow-wrap {
+  margin-inline: -1%;
+  padding-inline: 1%;
+  margin-bottom: -6px;
+  padding-bottom: 6px;
+}
+/* The side menu items swell a little too, and the purple pill behind them keeps its own size. No shadow: an item has no box of its own. */
+.grow-menu {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), color 0.3s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .grow-menu:hover { transform: scale(1.04); }
+}
+
+/* Dashboard cards come up one after another: a short fade and a 8px rise, each a beat after the one before. "backwards" (not "both")
+   so the card goes back to its own styles afterwards (the filter card scales on hover and must not be held at transform: none). */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.rise-list > * {
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.rise-list > :nth-child(2) { animation-delay: 0.07s; }
+.rise-list > :nth-child(3) { animation-delay: 0.14s; }
+.rise-list > :nth-child(4) { animation-delay: 0.21s; }
+.rise-list > :nth-child(5) { animation-delay: 0.28s; }
+.rise-list > :nth-child(n + 6) { animation-delay: 0.35s; }
+@media (prefers-reduced-motion: reduce) {
+  .rise-list > * { animation: none; }
+}
+
+/* The folded-sidebar name: the card slides out 8px from its icon and settles with a soft overshoot (back-out), then its icon and
+   label follow a beat later, each sliding in 6px. */
+@keyframes railpop {
+  from { opacity: 0; transform: translateX(-8px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes railpop-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.railpop {
+  animation: railpop 0.32s cubic-bezier(0.3, 1.7, 0.5, 1) both;
+  transform-origin: 0% 50%;
+}
+.railpop > * {
+  animation: railpop-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.railpop > :nth-child(1) { animation-delay: 0.05s; }
+.railpop > :nth-child(2) { animation-delay: 0.08s; }
+@media (prefers-reduced-motion: reduce) {
+  .railpop, .railpop > * { animation: none; }
+}
+
+/* A row that just arrived through a live update blinks three times (tinted, then back to its own colour). */
+@keyframes freshflash {
+  25%, 75% { background-color: color-mix(in oklab, var(--primary) 32%, transparent); }
+  50% { background-color: color-mix(in oklab, var(--primary) 10%, transparent); }
+}
+.fresh { animation: freshflash 1.3s ease-in-out 3; }
+@media (prefers-reduced-motion: reduce) {
+  .fresh { animation: none; background-color: color-mix(in oklab, var(--primary) 18%, transparent); }
+}
+
+/* A plan that is due today: the whole row breathes in amber (a slow, soft glow rather than a hard flash). The cells are animated, not
+   the row, so every browser repaints them. The table gives every row some padding at both ends, so the glow has room around the text. */
+@keyframes duetoday {
+  0%, 100% { background-color: rgb(245 158 11 / 0.07); }
+  50% { background-color: rgb(245 158 11 / 0.34); }
+}
+.due-today > td { animation: duetoday 0.9s ease-in-out infinite; }
+/* "Reduce motion" (a Windows setting that is often off on office PCs) stops every animation on the site through the rule near the top of
+   this file. This one is a slow colour fade, not movement or flashing, and it is what tells a technician a job is due, so it keeps
+   running (the !important wins over that global rule because this selector is more specific). */
+@media (prefers-reduced-motion: reduce) {
+  .due-today > td { animation-duration: 1.2s !important; animation-iteration-count: infinite !important; }
+}
+
+/* Dropdowns (see ui/select.tsx): a rounded box with a faint shadow; the list opens as a soft card. Neutral greys only, no extra colour. */
+button[data-select] {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 12px -6px rgb(0 0 0 / 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+button[data-select]:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--border) 70%, var(--foreground) 30%);
+}
+button[data-select]:focus-visible,
+button[data-select][aria-expanded="true"] {
+  outline: none;
+  border-color: color-mix(in oklab, var(--border) 55%, var(--foreground) 45%);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--foreground) 8%, transparent), 0 4px 14px -6px rgb(0 0 0 / 0.12);
+}
+/* Every card has a thin indigo gradient line on its top-left corner that fades out along the top and the left edge. It stays still;
+   when the mouse rests on a card the glow widens and slides a little along the edges, and eases back when the mouse leaves. */
+@property --edge-s { syntax: "<percentage>"; inherits: false; initial-value: 50%; }
+@property --edge-x { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --edge-y { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.card-edge {
+  position: relative;
+}
+.card-edge::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  /* from the top-left corner it runs along the top edge and down the left edge to about the middle of each, then fades out */
+  background: radial-gradient(ellipse var(--edge-s) var(--edge-s) at var(--edge-x) var(--edge-y), var(--primary) 0%, var(--gold) 24%, color-mix(in oklab, var(--primary) 60%, transparent) 55%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  transition: --edge-s 0.9s cubic-bezier(0.22, 1, 0.36, 1), --edge-x 0.9s cubic-bezier(0.22, 1, 0.36, 1), --edge-y 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-edge:hover::before {
+  --edge-s: 64%;
+  --edge-x: 40px;
+  --edge-y: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-edge::before { transition: none; }
+}
+@media print {
+  .card-edge::before {
+    display: none;
+  }
+}
+
+/* The search box on the register: tall and prominent, with a soft glow while typing. */
+.search-main {
+  box-shadow: 0 8px 24px -14px color-mix(in oklab, var(--primary) 55%, transparent);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.search-main:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--primary) 65%, var(--border));
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 14%, transparent), 0 8px 24px -14px color-mix(in oklab, var(--primary) 55%, transparent);
+}
+
+/* The card that holds the filters is the main control of a page: a very faint indigo wash over the card colour. */
+.filter-card {
+  background-image: linear-gradient(135deg, color-mix(in oklab, var(--primary) 10%, transparent), color-mix(in oklab, var(--gold) 7%, transparent));
+  border-color: color-mix(in oklab, var(--primary) 25%, var(--border));
+}
+/* Filter cards: a bright stroke runs round the whole card all the time, hover or not (kept running even when the system asks for reduced motion, as the card edge is the main visual cue). */
+@property --edge-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes edgerun { to { --edge-a: 360deg; } }
+.filter-card::before {
+  background: conic-gradient(from var(--edge-a), transparent 60%, #7454e5 80%, transparent 100%);
+  padding: 2px;
+  animation: edgerun 2.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-card::before { animation-duration: 2.5s !important; animation-iteration-count: infinite !important; }
+}
+/* The filter card is the main control: resting the mouse on it lifts and enlarges the whole card. */
+.filter-card { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease; transform-origin: center top; }
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .filter-card:hover { transform: scale(1.025); position: relative; z-index: 20; box-shadow: 0 24px 60px -20px color-mix(in oklab, var(--primary) 55%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-card { transition-duration: 0.35s !important; }
+}
+@keyframes selectpop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.select-pop { animation: selectpop 0.14s ease-out; transform-origin: top; }
+@media (prefers-reduced-motion: reduce) { .select-pop { animation: none; } }
+
+/* A field the form sent the person back to (see focus-field.ts) */
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"], button[data-select][aria-invalid="true"] {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--bad) 28%, transparent);
+}
+
+/* Login page: a drifting aurora, a faint grid and a glowing card. */
+.login-bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.login-bg::before { content: ""; position: absolute; inset: 0; background-image: var(--geo), var(--geo); background-size: 69.282px 120px; mask-image: radial-gradient(520px 400px at 100% 0%, #000, transparent 100%), radial-gradient(420px 320px at 0% 100%, #000, transparent 100%); }
+.login-blob { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: 0.28; animation: loginfloat 20s ease-in-out infinite alternate; }
+.dark .login-blob { opacity: 0.42; }
+@keyframes loginfloat {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(60px, 40px, 0) scale(1.18); }
+}
+.login-title { background: linear-gradient(100deg, var(--foreground) 10%, var(--primary) 55%, var(--gold) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.login-card { box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent), 0 30px 80px -24px color-mix(in oklab, var(--primary) 60%, transparent); }
+@media (prefers-reduced-motion: reduce) { .login-blob { animation: none; } }
+
+/* The page behind the cards: two soft gradient glows, plus a very faint isometric cube lattice that only shows in two corners. */
+body {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, var(--primary) 38%, transparent), transparent 70%),
+    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, var(--gold) 34%, transparent), transparent 70%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+.dark body {
+  background-image:
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, #5b45f7 64%, transparent), transparent 70%),
+    radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, #a28aff 42%, transparent), transparent 70%);
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image: var(--geo); background-size: 69.282px 120px;
+  mask-image: radial-gradient(520px 380px at 100% 0%, #000, transparent 100%), radial-gradient(420px 320px at 0% 100%, #000, transparent 100%);
+}
+/* Anything filled with the main colour (buttons, badges, tags) gets the gradient. */
+.bg-primary { background-image: var(--grad); }
+/* A thin indigo line under the top bar. */
+.brand-line { position: relative; }
+.brand-line::after { content: ""; position: absolute; inset: auto 0 -1px 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--gold) 55%, transparent); }
+/* The logo tile: always the indigo gradient, whatever the theme. */
+.brand-mark { background: linear-gradient(135deg, #5238ea 0%, #6450ff 50%, #a28aff 100%); color: #fff; }

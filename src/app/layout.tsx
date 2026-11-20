@@ -1,0 +1,47 @@
+import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
+import { LoadingBar } from "@/components/loading-bar";
+import { Pwa } from "@/components/pwa";
+import { AppShell } from "@/components/app-shell";
+import { AuthProvider } from "@/lib/auth";
+import "./globals.css";
+
+// LINE Seed Sans TH is used for the whole site (Thai + Latin).
+const lineSeed = localFont({
+  variable: "--font-line-seed",
+  display: "swap",
+  src: [
+    { path: "./fonts/LINESeedSansTH_W_Th.woff2", weight: "100", style: "normal" },
+    { path: "./fonts/LINESeedSansTH_W_Rg.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/LINESeedSansTH_W_Bd.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/LINESeedSansTH_W_XBd.woff2", weight: "800", style: "normal" },
+    { path: "./fonts/LINESeedSansTH_W_He.woff2", weight: "900", style: "normal" },
+  ],
+});
+
+export const metadata: Metadata = {
+  title: "CMU Asset & Maintenance",
+  description: "ระบบทะเบียนอุปกรณ์และติดตามการบำรุงรักษา",
+  // The icons live in public/ (that folder is what reaches the host); ?v= makes browsers drop the old cached icon.
+  icons: { icon: [{ url: "/favicon.ico?v=2", sizes: "48x48" }, { url: "/icons/icon-192.png?v=2", sizes: "192x192", type: "image/png" }] },
+};
+
+export const viewport: Viewport = { themeColor: "#5644d2", viewportFit: "cover" };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="th" className={lineSeed.variable} suppressHydrationWarning>
+      <head>
+        {/* light is the default; only an explicit saved "dark" choice turns dark on (runs before paint, no flash) */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}` }} />
+      </head>
+      <body>
+        <Pwa />
+        <LoadingBar />
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}

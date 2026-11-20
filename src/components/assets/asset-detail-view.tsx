@@ -1,0 +1,413 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Download, Pencil, Plus } from "lucide-react";
+import {
+  PRIORITY_LABEL,
+  WORK_ORDER_KIND_LABEL,
+  WORK_ORDER_STATUS_LABEL,
+  canEditAssets,
+  type AssetDetail,
+  type Priority,
+  type WorkOrderStatus,
+} from "@shared/index";
+import { AssetEditDialog } from "@/components/assets/asset-edit-dialog";
+import { AssetPhotos } from "@/components/assets/asset-photos";
+import { HealthBadge } from "@/components/assets/health-badge";
+import { BackLink } from "@/components/ui/back-link";
+import { IconButton } from "@/components/ui/icon-button";
+import { AssetHistory } from "@/components/history/asset-history";
+import { PlanDialog } from "@/components/assets/plan-dialog";
+import { WorkOrderDialog } from "@/components/assets/work-order-dialog";
+import { StatusBadge } from "@/components/status-badge";
+import { AssetDetailSkeleton } from "@/components/assets/asset-detail-skeleton";
+import { Card, CardTitle, EmptyState, ErrorState } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
+import { useApi } from "@/lib/use-api";
+import { useFresh } from "@/lib/use-fresh";
+import { NewBadge } from "@/components/ui/new-badge";
+import { API_PREFIX, DUE_SOON_DAYS } from "@shared/index";
+import { BrandLogo } from "@/components/ui/brand-logo";
+import { TONE } from "@/lib/due-tone";
+
+// Status is shown as text AND colour (never colour alone).
+const WO_TONE: Record<WorkOrderStatus, { badge: string; dot: string }> = {
+  done: { badge: "bg-ok-soft text-ok", dot: "bg-ok" },
+  in_progress: { badge: "bg-warn-soft text-warn", dot: "bg-warn" },
+};
+const PRIORITY_TONE: Record<Priority, string> = {
+  urgent: "bg-bad-soft text-bad",
+  high: "bg-warn-soft text-warn",
+  normal: "bg-muted text-muted-foreground",
+  low: "bg-muted text-muted-foreground",
+};
+
+// Same grid on every row and on the header, so the columns line up: date | job | status
+// literal class names (so Tailwind finds them); the rows of a job on a phone are numbered 1..6
+const ROW = ["row-start-1", "row-start-2", "row-start-3", "row-start-4", "row-start-5", "row-start-6"] as const;
+const WO_GRID = "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 sm:grid-cols-[132px_minmax(0,1fr)_140px] sm:gap-x-4";
+
+// The nearest due date among the active plans, up at the top so a phone user sees it without scrolling to the plan list.
+function NextDue({ plans }: { plans: AssetDetail["plans"] }) {
+  const next = plans.filter((p) => p.active && p.nextDueDate).sort((x, y) => (x.nextDueDate! < y.nextDueDate! ? -1 : 1))[0];
+  if (!next) return null;
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date()); // YYYY-MM-DD
+  const days = Math.round((Date.parse(`${next.nextDueDate}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  const tone = days < 0 ? TONE.overdue : days <= DUE_SOON_DAYS ? TONE.soon : TONE.plan;
+  const text = days < 0 ? `เกินกำหนด ${Math.abs(days)} วัน` : days === 0 ? "ครบกำหนดวันนี้" : `อีก ${days} วัน`;
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border bg-card px-4 py-3">
+      <div className="min-w-0">
+        <div className="text-xs text-muted-foreground">บำรุงรักษาครั้งถัดไป</div>
+        <div className="font-bold">{next.title}</div>
+      </div>
+      <div className="tabular ml-auto text-right">
+        <div className="text-sm font-bold">{formatDate(next.nextDueDate!)}</div>
+        <span className={`mt-0.5 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${tone.chip}`}>
+          <i className={`size-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />
+          {text}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[130px_1fr] gap-3 py-2 text-[15px] sm:grid-cols-[160px_1fr]">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words">{value || <span className="text-muted-foreground">—</span>}</dd>
+    </div>
+  );
+}
+
+// Saves the QR code as a PNG named after the asset code (the server sends it as SVG, so draw it on a white canvas first).
+async function saveQr(id: number, code: string) {
+  try {
+    const svg = await (await fetch(`${API_PREFIX}/assets/${id}/qr.svg`, { credentials: "same-origin" })).blob();
+    const url = URL.createObjectURL(svg);
+    const img = new Image();
+    await new Promise((ok, fail) => ((img.onload = ok), (img.onerror = fail), (img.src = url)));
+    const size = 1024, pad = 64;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size + pad * 2;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, pad, pad, size, size);
+    URL.revokeObjectURL(url);
+    const png = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
+    if (!png) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(png);
+    a.download = `QR-${code}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  } catch {
+    /* nothing to save */
+  }
+}
+
+export function AssetDetailView({ id }: { id: string }) {
+  const { data: a, error, loading, reload, liveTick } = useApi<AssetDetail>(`/assets/${encodeURIComponent(id)}`, undefined, { live: true });
+  const fresh = useFresh(useMemo(() => a?.workOrders.map((w) => w.id), [a]), liveTick); // jobs recorded while this page is open
+  const { user } = useAuth();
+  const canRecord = user ? canEditAssets(user.role) : false; // only a Super Admin or Technician may record work (the server enforces it too)
+  const [dialog, setDialog] = useState<{ id?: number; planId?: number } | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [planDialog, setPlanDialog] = useState<{ plan?: AssetDetail["plans"][number] } | null>(null); // add / change a maintenance plan
+  // Arriving from the dashboard: ?plan=<id> opens the record form for that plan, ?job=<id> opens that job. Only for those who may record.
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const planParam = Number(params.get("plan"));
+  const jobParam = Number(params.get("job"));
+  const hasTarget = (Number.isInteger(planParam) && planParam > 0) || (Number.isInteger(jobParam) && jobParam > 0);
+  const targetHandled = useRef(false);
+  useEffect(() => {
+    if (targetHandled.current || !a || !user || !hasTarget) return;
+    targetHandled.current = true;
+    if (canRecord) {
+      if (a.workOrders.some((w) => w.id === jobParam)) setDialog({ id: jobParam });
+      else if (a.plans.some((p) => p.id === planParam && p.active)) setDialog({ planId: planParam });
+    }
+    router.replace(pathname, { scroll: false }); // drop the parameter so a refresh does not open it again
+  }, [a, user, canRecord, planParam, jobParam, hasTarget, pathname, router]);
+  const [editingInfo, setEditingInfo] = useState(false); // the asset-information dialog
+  const [infoNote, setInfoNote] = useState<string | null>(null);
+
+  if (loading && !a) return <AssetDetailSkeleton />;
+  if (error || !a) return <ErrorState message={error ?? "ไม่พบอุปกรณ์"} onRetry={reload} />;
+
+  return (
+    <div className="grid gap-6">
+      <div className="print:hidden">
+        <BackLink href="/assets">ทะเบียนอุปกรณ์</BackLink>
+        {/* the name and its details on the left; the health score at the right end, level with the name */}
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-[28px] font-bold tracking-[-0.02em]">{a.name}</h1>
+              <StatusBadge status={a.status} />
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              รหัส {a.code} · {a.type} · {a.unit}
+            </p>
+            {a.brand && (
+              <p className="mt-2 flex items-center gap-2.5 text-[15px]">
+                <BrandLogo brand={a.brand} />
+                <span className="font-bold">{[a.brand, a.model].filter(Boolean).join(" ")}</span>
+              </p>
+            )}
+          </div>
+          {a.health && <HealthBadge health={a.health} />}
+        </div>
+        <NextDue plans={a.plans} />
+      </div>
+
+      <AssetPhotos assetId={a.id} images={a.images} canEdit={canRecord} onChanged={reload} />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <Card className="print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>ข้อมูลอุปกรณ์</CardTitle>
+            {canRecord && (
+              <button
+                type="button"
+                onClick={() => setEditingInfo(true)}
+                className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl border border-border px-3.5 hover:bg-muted"
+              >
+                <Pencil className="size-4" aria-hidden="true" />
+                แก้ไขข้อมูล
+              </button>
+            )}
+          </div>
+          {infoNote && (
+            <p role="status" className="mt-3 rounded-xl bg-ok-soft px-3 py-2.5 text-sm text-ok">
+              {infoNote}
+            </p>
+          )}
+          <dl className="mt-3 divide-y divide-border">
+            <Row label="ยี่ห้อ / รุ่น" value={[a.brand, a.model].filter(Boolean).join(" ")} />
+            <Row label="หมายเลขเครื่อง" value={a.serialNumber} />
+            <Row label="เลขครุภัณฑ์เดิม" value={a.legacyAssetNo} />
+            <Row label="ส่วนงานเจ้าของ" value={a.unit} />
+            <Row label="สถานที่" value={[a.location, a.locationDetail].filter(Boolean).join(" · ")} />
+            <Row label="วันที่ติดตั้ง" value={a.installDate && formatDate(a.installDate)} />
+            <Row label="วันที่ซื้อ" value={a.purchaseDate && formatDate(a.purchaseDate)} />
+            <Row label="ประกันหมด" value={a.warrantyEnd && formatDate(a.warrantyEnd)} />
+            <Row label="หมายเหตุ" value={a.notes} />
+          </dl>
+        </Card>
+
+        <Card className="relative hidden h-fit text-center sm:block print:block print:border-0 print:p-0 print:shadow-none">
+          <IconButton className="absolute right-3 top-3" label="บันทึก QR Code เป็นรูปภาพ (PNG)" icon={Download} onClick={() => void saveQr(a.id, a.code)} />
+          <CardTitle className="print:hidden">QR Code อุปกรณ์</CardTitle>
+          {/* always black on white (set by the server) so it scans in both themes and on paper */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${API_PREFIX}/assets/${a.id}/qr.svg`} alt={`QR Code ของ ${a.code}`} width={240} height={240} className="mx-auto mt-3 rounded-xl bg-white" />
+          <p className="mt-2 text-lg font-bold">{a.code}</p>
+          <p className="text-sm text-muted-foreground print:text-black">{a.name}</p>
+        </Card>
+      </div>
+
+      <Card className="print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle>แผนบำรุงรักษา</CardTitle>
+          {canRecord && (
+            <button
+              type="button"
+              onClick={() => setPlanDialog({})}
+              className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl border border-border px-3.5 font-bold hover:bg-muted"
+            >
+              <Plus className="size-5" aria-hidden="true" />
+              เพิ่มแผน
+            </button>
+          )}
+        </div>
+        <div className="mt-3">
+          {a.plans.length === 0 ? (
+            <EmptyState title="ยังไม่มีแผนบำรุงรักษา" hint={canRecord ? "กดปุ่ม เพิ่มแผน เพื่อกำหนดรอบการบำรุงรักษา" : undefined} />
+          ) : (
+            <ul className="divide-y divide-border">
+              {a.plans.map((p) => (
+                <li key={p.id} className="grow-row flex flex-wrap items-baseline justify-between gap-2 py-3">
+                  <div>
+                    <div className="font-bold">{p.title}</div>
+                    <div className="text-sm text-muted-foreground">
+                      ทุก {p.intervalValue} {p.intervalUnit === "month" ? "เดือน" : "วัน"}
+                      {p.active ? "" : " · ปิดใช้งาน"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span>ครบกำหนด {p.nextDueDate ? formatDate(p.nextDueDate) : "—"}</span>
+                    {canRecord && (
+                      <button
+                        type="button"
+                        onClick={() => setPlanDialog({ plan: p })}
+                        className="text-sm inline-flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-primary hover:bg-primary-soft"
+                        aria-label={`แก้ไขแผน ${p.title}`}
+                      >
+                        <Pencil className="size-4" aria-hidden="true" />
+                        แก้ไข
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Card>
+
+      <Card className="print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle>
+            ประวัติงาน
+          </CardTitle>
+          {canRecord && (
+            <button
+              type="button"
+              onClick={() => setDialog({})}
+              className="text-sm inline-flex min-h-9 items-center gap-2 rounded-xl bg-primary px-3.5 font-bold text-primary-foreground hover:opacity-90"
+            >
+              <Plus className="size-5" aria-hidden="true" />
+              บันทึกงานซ่อมบำรุง
+            </button>
+          )}
+        </div>
+        {note && (
+          <p role="status" className="mt-3 rounded-xl bg-ok-soft px-3 py-2.5 text-sm text-ok">
+            {note}
+          </p>
+        )}
+        <div className="mt-3">
+          {a.workOrders.length === 0 ? (
+            <EmptyState title="ยังไม่มีใบงาน" hint={canRecord ? "กดปุ่ม บันทึกงานซ่อมบำรุง เพื่อเพิ่มรายการแรก" : undefined} />
+          ) : (
+            <>
+              <div className={`${WO_GRID} hidden border-b border-border pb-2 text-xs text-muted-foreground sm:grid`} aria-hidden="true">
+                <span>วันที่</span>
+                <span>งาน</span>
+                <span>สถานะ</span>
+              </div>
+              <ul className="divide-y divide-border">
+                {a.workOrders.map((w) => {
+                  const tone = WO_TONE[w.status];
+                  const date = w.performedOn ?? w.dueDate;
+                  const hasFooter = Boolean(w.recordedBy);
+                  // rows are numbered so an absent description / footer leaves no empty gap on phones:
+                  // title, number, [description], [recorded by], date, then the badges at the bottom-left
+                  const d = w.description ? 1 : 0;
+                  const f = hasFooter ? 1 : 0;
+                  const footRow = ROW[2 + d];
+                  const dateRow = ROW[2 + d + f];
+                  const badgeRow = ROW[3 + d + f];
+                  return (
+                    <li key={w.id} className={`grow-row ${WO_GRID} py-3.5 sm:items-start ${fresh.has(w.id) ? "fresh" : ""}`}>
+                      <div className="contents sm:col-start-2 sm:row-start-1 sm:block">
+                        <p className="col-start-1 row-start-1 min-w-0 break-words font-bold">
+                          {w.title}
+                          {fresh.has(w.id) && <NewBadge />}
+                        </p>
+                        <p className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:mt-1">
+                          <span className="tabular">{w.number}</span>
+                        </p>
+                        {w.description && <p className="col-span-2 row-start-3 line-clamp-3 whitespace-pre-line break-words text-sm text-muted-foreground sm:mt-1.5">{w.description}</p>}
+                        {hasFooter && (
+                          <p className={`col-span-2 ${footRow} flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground sm:mt-1.5`}>
+                            <span>บันทึกโดย {w.recordedBy}</span>
+                          </p>
+                        )}
+                        <p className={`col-span-2 ${badgeRow} flex flex-wrap items-center justify-start gap-2 text-xs sm:mt-2`}>
+                          <span className="rounded-md bg-muted px-2 py-0.5">{WORK_ORDER_KIND_LABEL[w.kind]}</span>
+                          <span className={`rounded-md px-2 py-0.5 ${PRIORITY_TONE[w.priority]}`}>ความสำคัญ {PRIORITY_LABEL[w.priority]}</span>
+                        </p>
+                      </div>
+                      <div className="col-start-2 row-start-1 flex items-center gap-1 justify-self-end sm:col-start-3 sm:justify-self-start">
+                        <span className={`inline-flex h-fit items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${tone.badge}`}>
+                          <i className={`size-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />
+                          {WORK_ORDER_STATUS_LABEL[w.status]}
+                        </span>
+                        {canRecord && (
+                          <button
+                            type="button"
+                            onClick={() => setDialog({ id: w.id })}
+                            aria-label={`แก้ไขหรือบันทึกผล ${w.number}`}
+                            title="แก้ไข / บันทึกผล"
+                            className="grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Pencil className="size-4" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                      <p className={`tabular col-span-2 ${dateRow} text-sm sm:col-span-1 sm:col-start-1 sm:row-start-1`}>
+                        {date ? (
+                          <>
+                            <span className="text-muted-foreground">{w.performedOn ? "ดำเนินการ " : "กำหนด "}</span>
+                            <span className="whitespace-nowrap font-bold">{formatDate(date)}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">ยังไม่ระบุวันที่</span>
+                        )}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+      </Card>
+
+      {editingInfo && (
+        <AssetEditDialog
+          assetId={a.id}
+          onClose={(code) => {
+            setEditingInfo(false);
+            if (code) {
+              reload(); // title, badge and the information card show the new values
+              setInfoNote("บันทึกการแก้ไขข้อมูลอุปกรณ์เรียบร้อยแล้ว");
+              setTimeout(() => setInfoNote(null), 5000);
+            }
+          }}
+        />
+      )}
+
+      <AssetHistory assetId={a.id} />
+
+      {planDialog && (
+        <PlanDialog
+          assetId={a.id}
+          plan={planDialog.plan}
+          onClose={(saved) => {
+            setPlanDialog(null);
+            if (saved) {
+              reload();
+              setNote(saved);
+              setTimeout(() => setNote(null), 5000);
+            }
+          }}
+        />
+      )}
+
+      {dialog && (
+        <WorkOrderDialog
+          assetId={a.id}
+          workOrderId={dialog.id}
+          planId={dialog.planId}
+          onClose={(saved) => {
+            setDialog(null);
+            if (saved) {
+              reload();
+              setNote(dialog.id === undefined ? "บันทึกงานเรียบร้อยแล้ว" : "บันทึกการแก้ไขเรียบร้อยแล้ว");
+              setTimeout(() => setNote(null), 5000);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
