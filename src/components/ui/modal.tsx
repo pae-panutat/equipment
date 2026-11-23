@@ -16,16 +16,37 @@ export function Modal({
   onClose,
   canDismiss = true,
   className,
+  fade = false,
   children,
 }: {
   title: string;
   onClose: () => void;
   canDismiss?: boolean;
   className?: string;
+  /** Opt in: the backdrop fades in and the dialog fades up. Web Animations, so it also plays where the site's CSS motion rule is off. */
+  fade?: boolean;
   children: React.ReactNode;
 }) {
   const titleId = useId();
   const dialog = useRef<HTMLDivElement>(null);
+  const backdrop = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!fade) return;
+    const ease = "cubic-bezier(0.22, 1, 0.36, 1)";
+    const a = backdrop.current?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "ease-out" });
+    const b = dialog.current?.animate(
+      [
+        { opacity: 0, transform: "translateY(14px) scale(0.96)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 420, easing: ease },
+    );
+    return () => {
+      a?.cancel();
+      b?.cancel();
+    };
+  }, [fade]);
   const dismissible = useRef({ canDismiss, onClose });
   dismissible.current = { canDismiss, onClose };
 
@@ -69,7 +90,7 @@ export function Modal({
   return createPortal(
     <div className="fixed inset-0 z-[60] grid place-items-center p-3 sm:p-6 print:hidden">
       {/* dimmed + blurred page behind the dialog */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" />
+      <div ref={backdrop} className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true" />
       <div
         ref={dialog}
         role="dialog"

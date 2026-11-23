@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Boxes, Database, LayoutDashboard, LogOut, Menu, MoreHorizontal, Monitor, History, CalendarDays, FileBarChart } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
+import { Modal } from "@/components/ui/modal";
 import { RailTip } from "@/components/ui/rail-tip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
@@ -183,6 +184,28 @@ function BottomNav() {
   );
 }
 
+/** Children fade up one after another when it mounts (Web Animations, so it plays even where the CSS motion rule is off). */
+function Stagger({ className, children }: { className?: string; children: React.ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const anims = [...(box.current?.children ?? [])].map((el, i) =>
+      el.animate(
+        [
+          { opacity: 0, transform: "translateY(10px)" },
+          { opacity: 1, transform: "none" },
+        ],
+        { duration: 450, delay: 120 + i * 70, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "backwards" },
+      ),
+    );
+    return () => anims.forEach((a) => a.cancel());
+  }, []);
+  return (
+    <div ref={box} className={className}>
+      {children}
+    </div>
+  );
+}
+
 function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
@@ -198,6 +221,7 @@ function Brand() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [collapsed, setCollapsed] = useState(false); // desktop: the sidebar folded to a narrow icon rail
   const pathname = usePathname();
   useEffect(() => {
@@ -290,7 +314,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
             <button
               type="button"
-              onClick={() => void logout()}
+              onClick={() => setConfirmingLogout(true)}
               aria-label="ออกจากระบบ"
               title="ออกจากระบบ"
               className="grid size-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -304,6 +328,66 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="mx-auto w-full max-w-[1800px] px-4 pb-24 pt-6 lg:px-8 lg:py-8 print:p-0">{children}</main>
         <BottomNav />
       </div>
+
+      {confirmingLogout && (
+        <Modal
+          title="ออกจากระบบ"
+          fade
+          onClose={() => setConfirmingLogout(false)}
+          className="max-w-[420px] rounded-[32px] border-foreground/10 bg-card/55 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-2xl backdrop-saturate-150 [&>h2]:sr-only"
+        >
+          {/* colour lives behind the glass: blurred orbs the frosted panel diffuses */}
+          <span className="pointer-events-none absolute -left-16 -top-16 size-64 rounded-full bg-bad/40 blur-3xl" aria-hidden="true" />
+          <span className="pointer-events-none absolute -bottom-20 -right-16 size-64 rounded-full bg-primary/40 blur-3xl" aria-hidden="true" />
+
+          <Stagger className="relative grid justify-items-center gap-5 px-6 pb-6 pt-9 text-center">
+            <span className="grid size-24 place-items-center rounded-full border border-foreground/10 bg-card/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] backdrop-blur-md" aria-hidden="true">
+              <span className="grid size-16 place-items-center rounded-full bg-bad text-white shadow-lg ring-4 ring-bad/20">
+                <LogOut className="size-7" />
+              </span>
+            </span>
+
+            <div className="grid gap-1.5">
+              <p className="text-2xl font-bold">ออกจากระบบ?</p>
+              <p className="text-sm text-muted-foreground">ต้องเข้าสู่ระบบใหม่เมื่อกลับมาใช้งาน</p>
+            </div>
+
+            {/* who is signing out: useful when several people share one computer */}
+            <div className="flex w-full min-w-0 items-center gap-3 rounded-2xl border border-foreground/10 bg-card/40 p-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md">
+              <UserAvatar className="size-11" />
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-sm font-bold">{user.displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {ROLE_LABEL[user.role]}
+                  {user.unitName ? ` · ${user.unitName}` : ""}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid w-full grid-cols-2 gap-3">
+              <button
+                type="button"
+                data-autofocus
+                onClick={() => setConfirmingLogout(false)}
+                className="min-h-12 rounded-2xl border border-foreground/15 bg-card/40 text-[15px] font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md transition-colors hover:bg-card/70"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingLogout(false);
+                  void logout();
+                }}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-bad text-[15px] font-bold text-white shadow-lg shadow-bad/30 ring-1 ring-white/20 transition-opacity hover:opacity-90"
+              >
+                <LogOut className="size-[18px]" aria-hidden="true" />
+                ออกจากระบบ
+              </button>
+            </div>
+          </Stagger>
+        </Modal>
+      )}
     </div>
   );
 }
