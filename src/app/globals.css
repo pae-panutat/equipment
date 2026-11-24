@@ -418,3 +418,11 @@ body::before {
 .brand-line::after { content: ""; position: absolute; inset: auto 0 -1px 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--gold) 55%, transparent); }
 /* The logo tile: always the indigo gradient, whatever the theme. */
 .brand-mark { background: linear-gradient(135deg, #5238ea 0%, #6450ff 50%, #a28aff 100%); color: #fff; }
+
+/* The 3D building page: labels that float over the model (positioned by script, every frame). */
+.building-stage canvas { touch-action: none; }
+.asset-label { z-index: 2; display: flex; align-items: center; gap: 5px; white-space: nowrap; padding: 4px 7px 4px 4px; border-radius: 6px; font-weight: 600; font-size: 11px; line-height: 1.1; color: var(--foreground); background: color-mix(in srgb, var(--card) 92%, transparent); border: 1px solid color-mix(in srgb, var(--status) 45%, transparent); box-shadow: 0 2px 8px rgb(15 20 30 / 0.12); }
+.asset-label > span { display: grid; place-items: center; width: 14px; height: 14px; border-radius: 9999px; font-size: 10px; line-height: 1; color: #fff; background: var(--status); }
+.asset-label:hover, .asset-label.is-selected { outline: 2px solid var(--status); outline-offset: 2px; }
+.room-label { z-index: 1; white-space: nowrap; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; color: #354b44; background: rgb(238 238 231 / 0.75); }
+@media (max-width: 800px) { .asset-label { font-size: 9px; padding: 3px; gap: 3px; } .room-label { font-size: 9px; padding: 2px 4px; } }

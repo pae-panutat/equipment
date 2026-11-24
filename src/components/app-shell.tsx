@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Boxes, Database, LayoutDashboard, LogOut, Menu, MoreHorizontal, Monitor, History, CalendarDays, FileBarChart } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, LogOut, Menu, MoreHorizontal, Monitor, History, CalendarDays, FileBarChart, Building2 } from "lucide-react";
 import { ROLE_LABEL } from "@shared/index";
 import { Modal } from "@/components/ui/modal";
 import { RailTip } from "@/components/ui/rail-tip";
@@ -19,6 +19,7 @@ type NavItem = { href: string; label: string; short?: string; icon: React.Compon
 const MAIN: NavItem[] = [
   { href: "/", label: "ภาพรวม", icon: LayoutDashboard },
   { href: "/assets", label: "ทะเบียนอุปกรณ์", short: "อุปกรณ์", icon: Boxes },
+  { href: "/building", label: "อาคาร 3 มิติ", short: "3 มิติ", icon: Building2 },
   { href: "/calendar", label: "ปฏิทินบำรุงรักษา", short: "ปฏิทิน", icon: CalendarDays },
   { href: "/reports", label: "รายงาน", icon: FileBarChart },
 ];
