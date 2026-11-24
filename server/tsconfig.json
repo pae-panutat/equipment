@@ -11,5 +11,6 @@
     "resolveJsonModule": true,
     "sourceMap": true
   },
-  "include": ["./**/*.ts", "../db/**/*.ts", "../shared/**/*.ts"]
+  "include": ["./**/*.ts", "../db/**/*.ts", "../shared/**/*.ts"],
+  "exclude": ["./__tests__/**"]
 }

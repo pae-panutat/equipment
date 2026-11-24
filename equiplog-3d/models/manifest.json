@@ -1,0 +1,20 @@
+{
+  "chiller": {
+    "bytes": 238492
+  },
+  "pump": {
+    "bytes": 103064
+  },
+  "air": {
+    "bytes": 79128
+  },
+  "other": {
+    "bytes": 23360
+  },
+  "building-shell": {
+    "bytes": 162300
+  },
+  "equiplog-floor": {
+    "bytes": 606456
+  }
+}

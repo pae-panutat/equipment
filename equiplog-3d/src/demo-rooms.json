@@ -1,0 +1,98 @@
+[
+  {
+    "name": "ห้องเครื่องทำน้ำเย็น",
+    "items": [
+      {
+        "id": 101,
+        "label": "CH-01",
+        "kind": "chiller",
+        "alert": "ok"
+      },
+      {
+        "id": 102,
+        "label": "CH-02",
+        "kind": "chiller",
+        "alert": "warn"
+      }
+    ]
+  },
+  {
+    "name": "ห้องปั๊มน้ำ",
+    "items": [
+      {
+        "id": 201,
+        "label": "P-01",
+        "kind": "pump",
+        "alert": "ok"
+      },
+      {
+        "id": 202,
+        "label": "P-02",
+        "kind": "pump",
+        "alert": "bad"
+      },
+      {
+        "id": 203,
+        "label": "P-03",
+        "kind": "pump",
+        "alert": "ok"
+      }
+    ]
+  },
+  {
+    "name": "ห้องระบบอากาศ",
+    "items": [
+      {
+        "id": 301,
+        "label": "AHU-01",
+        "kind": "air",
+        "alert": "ok"
+      }
+    ]
+  },
+  {
+    "name": "ห้องควบคุมไฟฟ้า",
+    "items": [
+      {
+        "id": 401,
+        "label": "MDB-01",
+        "kind": "other",
+        "alert": "ok"
+      },
+      {
+        "id": 402,
+        "label": "DB-02",
+        "kind": "other",
+        "alert": "ok"
+      }
+    ]
+  },
+  {
+    "name": "ห้องระบบอากาศสำรอง",
+    "items": [
+      {
+        "id": 501,
+        "label": "AHU-02",
+        "kind": "air",
+        "alert": "warn"
+      }
+    ]
+  },
+  {
+    "name": "ห้องปั๊มสำรอง",
+    "items": [
+      {
+        "id": 601,
+        "label": "P-04",
+        "kind": "pump",
+        "alert": "ok"
+      },
+      {
+        "id": 602,
+        "label": "P-05",
+        "kind": "pump",
+        "alert": "ok"
+      }
+    ]
+  }
+]

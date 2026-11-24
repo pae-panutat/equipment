@@ -49,3 +49,6 @@ next-env.d.ts
 
 # uploaded photos (local dev storage; on the host UPLOAD_DIR points outside the app folder)
 /uploads
+
+# compiled tests
+/.test-build

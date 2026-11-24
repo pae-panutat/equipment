@@ -1,0 +1,19 @@
+{
+  "runtimeErrors": [],
+  "externalRequests": [],
+  "checks": [
+    "11 projected accessible asset buttons",
+    "click opens matching details",
+    "Escape closes details",
+    "keyboard Enter selects equipment",
+    "X closes details",
+    "light and dark render",
+    "1366x768 has no document overflow",
+    "drag changes camera view",
+    "drawer works with reduced motion"
+  ],
+  "testedViewport": [
+    1440,
+    1000
+  ]
+}

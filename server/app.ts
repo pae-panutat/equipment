@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
@@ -8,6 +10,16 @@ import { usersRouter } from "./auth/users-routes";
 import { checkOrigin, requireAuth } from "./auth/guard";
 import { dataRouter } from "./routes";
 import { masterRouter } from "./master-data";
+
+// Which build this process is running: Next writes it to .next/BUILD_ID at build time. The deploy pipeline compares it with the
+// build it just uploaded, so a green deploy really means the new code is live (null when there is no build, e.g. `npm run dev`).
+const BUILD_ID = (() => {
+  try {
+    return fs.readFileSync(path.resolve(__dirname, "..", "..", ".next", "BUILD_ID"), "utf8").trim() || null;
+  } catch {
+    return null;
+  }
+})();
 
 export function createApp() {
   const app = express();
@@ -37,7 +49,7 @@ export function createApp() {
     try {
       const result = await db.execute(sql`SELECT VERSION() AS version`);
       const version = (result as unknown as [{ version: string }[]])[0]?.[0]?.version;
-      res.json({ ok: true, db: "up", dbVersion: version });
+      res.json({ ok: true, db: "up", dbVersion: version, build: BUILD_ID });
     } catch (err) {
       console.error("health check failed", err);
       res.status(500).json({ ok: false, db: "down" });

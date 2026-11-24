@@ -56,9 +56,8 @@ export function invalidateTreeCache(): void {
   locationRows.clear();
 }
 
-/** A unit and all of its sub-units. */
-export async function unitIdsWithDescendants(unitId: number): Promise<number[]> {
-  const all = await allUnits();
+/** A unit and all of its sub-units, from the whole unit list (pure, so the permission rule can be tested without a database). */
+export function descendantIds(all: readonly { id: number; parent_id: number | null }[], unitId: number): number[] {
   const ids = new Set<number>([unitId]);
   let grew = true;
   while (grew) {
@@ -73,10 +72,21 @@ export async function unitIdsWithDescendants(unitId: number): Promise<number[]> 
   return [...ids];
 }
 
+/** A unit and all of its sub-units. */
+export async function unitIdsWithDescendants(unitId: number): Promise<number[]> {
+  return descendantIds(await allUnits(), unitId);
+}
+
+/** The permission rule itself: null = no restriction, [] = sees nothing, otherwise the user's own unit and its sub-units. */
+export function allowedFrom(user: Pick<AuthUser, "seesAllUnits" | "unitId">, all: readonly { id: number; parent_id: number | null }[]): number[] | null {
+  if (user.seesAllUnits) return null;
+  return user.unitId ? descendantIds(all, user.unitId) : [];
+}
+
 /** Units the user may see (their own unit and its sub-units). null = no restriction. [] = none. */
 export async function allowedUnitIds(user: AuthUser): Promise<number[] | null> {
-  if (user.seesAllUnits) return null;
-  return user.unitId ? unitIdsWithDescendants(user.unitId) : [];
+  if (user.seesAllUnits) return null; // no need to load the tree
+  return allowedFrom(user, await allUnits());
 }
 
 /** WHERE fragment over the `assets` table aliased as `a`. Always limited to what the user is allowed to see. */

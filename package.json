@@ -8,6 +8,7 @@
     "build:server": "tsc -p server/tsconfig.json",
     "start": "node server.js",
     "typecheck": "tsc --noEmit && tsc -p server/tsconfig.json --noEmit",
+    "test": "tsc -p server/tsconfig.test.json && node --test .test-build/server/__tests__/*.test.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "npm run build:server && node dist/server/migrate-cli.js",
     "db:seed": "npm run build:server && node dist/server/seed.js",

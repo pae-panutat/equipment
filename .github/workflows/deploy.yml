@@ -26,6 +26,7 @@ jobs:
         run: |
           npm ci
           npm run typecheck
+          npm test
           npm run build
 
       - name: Assemble deploy folder
@@ -37,6 +38,7 @@ jobs:
           if [ -d public ]; then cp -r public deploy/public; fi
           cp -r db/migrations deploy/db/migrations
           cp server.js package.json package-lock.json next.config.mjs deploy/
+          echo "BUILD_ID=$(cat .next/BUILD_ID)" >> "$GITHUB_ENV"
           # node_modules is installed on the host (Node.js Selector -> Run NPM Install)
 
       - name: Upload via FTP
@@ -56,15 +58,24 @@ jobs:
 
       # Add "[skip restart]" to a commit message when package.json dependencies changed:
       # run "Run NPM Install" in DirectAdmin first, then restart manually.
-      - name: Restart app
+      # A green deploy means the NEW build answers on the site: the job fails if the restart is refused or the
+      # live build never becomes the one just uploaded (so "green but still the old site" cannot happen silently).
+      - name: Restart app and verify the new build is live
         if: ${{ !contains(github.event.head_commit.message, '[skip restart]') }}
         env:
           RESTART_TOKEN: ${{ secrets.RESTART_TOKEN }}
           SITE_URL: ${{ secrets.SITE_URL }}
         run: |
           if [ -z "$RESTART_TOKEN" ] || [ -z "$SITE_URL" ]; then
-            echo "RESTART_TOKEN/SITE_URL not set - restart the app manually in DirectAdmin"; exit 0
+            echo "::warning::RESTART_TOKEN/SITE_URL not set - restart the app manually in DirectAdmin and check the site"; exit 0
           fi
-          curl -sS -m 30 -X POST -H "x-restart-token: $RESTART_TOKEN" "$SITE_URL/api/v1/internal/restart" || true
-          sleep 8
-          curl -sS -m 60 "$SITE_URL/api/v1/health" || true
+          curl -fsS -m 30 -X POST -H "x-restart-token: $RESTART_TOKEN" "$SITE_URL/api/v1/internal/restart"
+          echo
+          for i in $(seq 1 24); do
+            sleep 5
+            live=$(curl -fsS -m 20 "$SITE_URL/api/v1/health" 2>/dev/null | sed -n 's/.*"build":"\([^"]*\)".*/\1/p' || true)
+            echo "check $i: live build='$live' expected='$BUILD_ID'"
+            if [ "$live" = "$BUILD_ID" ]; then echo "New build is live."; exit 0; fi
+          done
+          echo "::error::The site did not come back on build $BUILD_ID within 2 minutes. Restart the app in DirectAdmin and check the site."
+          exit 1
