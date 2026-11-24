@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { type AssetListItem, type Paged } from "@shared/index";
 import { Card, ErrorState, Skeleton } from "@/components/ui/card";
+import { EMPTY_FILTERS, FilterBar, type Filters } from "@/components/filter-bar";
+import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/use-api";
 import { cn } from "@/lib/utils";
 import { planSize, type Alert, type Kind, type Room } from "./building-3d";
@@ -37,7 +39,15 @@ function place(a: AssetListItem, now: string): { building: string; p: Placed } |
 const worst = (list: Placed[]): Alert => WORST[Math.max(0, ...list.map((p) => WORST.indexOf(p.alert)))];
 
 export function BuildingView() {
-  const { data, error, loading, reload } = useApi<Paged<AssetListItem>>("/assets", { pageSize: 100, sort: "code" }, { live: true });
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const { user } = useAuth();
+  // The model is shown only once a faculty/unit is chosen; someone who sees only their own faculty has it chosen from the start.
+  const unitChosen = Boolean(filters.unitId || (user && !user.seesAllUnits && user.unitId));
+  const { data, error, loading, reload } = useApi<Paged<AssetListItem>>(
+    "/assets",
+    { pageSize: 100, sort: "code", unitId: filters.unitId, typeId: filters.typeId, status: filters.status },
+    { live: true },
+  );
   const [chosen, setChosen] = useState<string | null>(null);
   const [floor, setFloor] = useState(1);
   const [picked, setPicked] = useState<number | null>(null);
@@ -76,9 +86,17 @@ export function BuildingView() {
     <div className="grid gap-5">
       <div>
         <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">อาคาร 3 มิติ</h1>
-        <p className="mt-1 text-muted-foreground">ลากเพื่อหมุนแผนผังชั้น กดที่เครื่องเพื่อดูข้อมูลอุปกรณ์นั้น</p>
+        <p className="mt-1 text-muted-foreground">ลากเพื่อเลื่อนแผนผัง (คลิกขวาลากเพื่อหมุน, ล้อเมาส์เพื่อซูม) กดที่เครื่องเพื่อดูข้อมูลอุปกรณ์นั้น</p>
       </div>
 
+      <FilterBar allUnitsLabel="กรุณาเลือกส่วนงาน" value={filters} onChange={(v) => (setFilters(v), setPicked(null))} />
+
+      {!unitChosen ? (
+        <Card>
+          <p className="py-6 text-center text-muted-foreground">เลือกส่วนงาน/คณะก่อน เพื่อดูแบบจำลองอาคาร 3 มิติ</p>
+        </Card>
+      ) : (
+        <>
       {error && <ErrorState message={error} onRetry={reload} />}
       {loading && !data ? (
         <Skeleton className="h-[460px]" />
@@ -140,6 +158,8 @@ export function BuildingView() {
             <Building3D rooms={rooms} extent={extent} selected={picked} onPick={setPicked} />
           </div>
         </div>
+      )}
+        </>
       )}
 
       {current && <AssetDrawer asset={current.asset} alert={current.alert} onClose={() => setPicked(null)} />}

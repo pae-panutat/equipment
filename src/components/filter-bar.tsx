@@ -27,12 +27,15 @@ export function FilterBar({
   onChange,
   className,
   children,
+  allUnitsLabel = "ทุกส่วนงาน",
 }: {
   value: Filters;
   onChange: (v: Filters) => void;
   className?: string;
   /** extra fields shown in the same row, after "สถานะ" (e.g. a month range); the unit box is made narrower to make room */
   children?: React.ReactNode;
+  /** the text of the empty choice in the unit box */
+  allUnitsLabel?: string;
 }) {
   const { data } = useApi<FilterOptions>("/meta/filters");
   const { user } = useAuth();
@@ -56,7 +59,7 @@ export function FilterBar({
           value={restricted ? value.unitId || own : value.unitId}
           onChange={(e) => set({ unitId: e.target.value === own ? "" : e.target.value })}
         >
-          {!restricted && <option value="">ทุกส่วนงาน</option>}
+          {!restricted && <option value="">{allUnitsLabel}</option>}
           {restricted && !own && <option value="">— ยังไม่กำหนดส่วนงาน —</option>}
           {unitOptions(data?.units ?? [], { keepRoot: restricted }).map((u) => (
             <option key={u.id} value={u.id}>
