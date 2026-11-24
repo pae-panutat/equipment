@@ -49,6 +49,8 @@ function FitCamera({rooms,onFit}:{rooms:Room[];onFit:(dist:number)=>void}){
   const fits=(dist:number)=>{camera.position.copy(dir).multiplyScalar(dist);camera.lookAt(0,h*.3,0);camera.updateMatrixWorld();return corners.every(c=>{v.copy(c).project(camera);return Math.abs(v.x)<=.97&&Math.abs(v.y)<=.965&&v.z<1;});};
   let lo=4,hi=400;for(let i=0;i<30&&hi-lo>.05;i++){const m=(lo+hi)/2;if(fits(m))hi=m;else lo=m;}
   fits(hi);onFit(hi);
+  /* open closer than the full fit (drag/scroll to zoom out; the fit distance stays the zoom-out limit) */
+  camera.position.copy(dir).multiplyScalar(hi*.68);camera.lookAt(0,h*.3,0);camera.updateMatrixWorld();
 
  },[camera,size.width,size.height,L,onFit]);
  return null;
