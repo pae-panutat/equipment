@@ -26,7 +26,7 @@ jobs:
         run: |
           npm ci
           npm run typecheck
-          npm test
+          DB_USER=ci DB_NAME=ci npm test
           npm run build
 
       - name: Assemble deploy folder
