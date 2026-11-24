@@ -88,11 +88,7 @@ export function BuildingView() {
 
       <FilterBar allUnitsLabel="กรุณาเลือกส่วนงาน" value={filters} onChange={(v) => (setFilters(v), setPicked(null))} />
 
-      {!unitChosen ? (
-        <Card>
-          <p className="py-6 text-center text-muted-foreground">เลือกส่วนงาน/คณะก่อน เพื่อดูแบบจำลองอาคาร 3 มิติ</p>
-        </Card>
-      ) : (
+      {!unitChosen ? null : (
         <>
       {error && <ErrorState message={error} onRetry={reload} />}
       {loading && !data ? (
