@@ -67,10 +67,10 @@ export function MaintenanceCard({ months, stats, asOf, tip, className }: { month
 
       <Kpis stats={stats} />
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px]">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px] text-muted-foreground">
         {STACK.map((k) => (
           <span key={k} className="inline-flex items-center gap-2">
-            <i className="size-3 rounded-[4px]" style={{ background: KIND_COLOR[k] }} aria-hidden="true" />
+            <i className="size-2.5 rounded-full" style={{ background: KIND_COLOR[k] }} aria-hidden="true" />
             {WORK_ORDER_KIND_LABEL[k]}
           </span>
         ))}
@@ -122,11 +122,18 @@ export function MaintenanceCard({ months, stats, asOf, tip, className }: { month
   );
 }
 
+// A bar segment with only its outer (top) end rounded, so a stack reads as one solid column.
+const segPath = (x: number, y: number, w: number, h: number, r: number, round: boolean) => {
+  if (!round || r <= 0) return `M${x},${y}h${w}v${h}h${-w}Z`;
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+};
+
 function Bars({ months, thisMonth, tip }: { months: Month[]; thisMonth: string; tip: TipRef }) {
   const [ref, { w: W, h: H }] = useSize();
   const reduce = useReducedMotion();
   const [grown, setGrown] = React.useState(false);
   const [hover, setHover] = React.useState<number | null>(null);
+  const gid = React.useId().replace(/[^a-zA-Z0-9]/g, "");
   React.useEffect(() => {
     if (!W) return;
     const r = requestAnimationFrame(() => requestAnimationFrame(() => setGrown(true)));
@@ -140,7 +147,7 @@ function Bars({ months, thisMonth, tip }: { months: Month[]; thisMonth: string; 
   const top = 22, bot = 44, left = 34, right = 10;
   const plotW = Math.max(0, W - left - right);
   const slot = n ? plotW / n : 0;
-  const bw = Math.max(6, Math.min(56, slot * 0.7));
+  const bw = Math.max(6, Math.min(44, slot * 0.58));
   const Y = (v: number) => top + (1 - v / mx) * (H - top - bot);
   const cx = (i: number) => left + slot * i + slot / 2;
   const every = Math.max(1, Math.ceil(40 / Math.max(slot, 1))); // thin out the month names when the range is long
@@ -173,37 +180,44 @@ function Bars({ months, thisMonth, tip }: { months: Month[]; thisMonth: string; 
           aria-label={`งานเสร็จต่อเดือน: ${months.map((m) => `${formatMonth(m.month)} ${m.count} งาน ครบกำหนด ${m.due}`).join(", ")}`}
           onPointerLeave={() => (setHover(null), tip.current?.hide())}
         >
+          <defs>
+            {STACK.map((k) => (
+              <linearGradient key={k} id={`${gid}${k}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={KIND_COLOR[k]} stopOpacity={1} />
+                <stop offset="100%" stopColor={KIND_COLOR[k]} stopOpacity={0.78} />
+              </linearGradient>
+            ))}
+          </defs>
           {ticks.map((v) => (
             <g key={v}>
-              <line x1={left} x2={W - right} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeDasharray={v === 0 ? undefined : "3 4"} />
-              <text x={left - 8} y={Y(v) + 4} textAnchor="end" className="fill-muted-foreground text-[12px]">
+              <line x1={left} x2={W - right} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeOpacity={v === 0 ? 1 : 0.45} strokeWidth={v === 0 ? 1.5 : 1} />
+              <text x={left - 10} y={Y(v) + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">
                 {v}
               </text>
             </g>
           ))}
 
           {/* a faint band behind the month under the pointer */}
-          {hover !== null && <rect x={left + slot * hover} y={top - 6} width={slot} height={H - top - bot + 6} rx={8} fill="var(--muted)" opacity={0.6} />}
+          {hover !== null && <rect x={left + slot * hover} y={top - 6} width={slot} height={H - top - bot + 6} rx={10} fill="var(--muted)" opacity={0.7} />}
 
           {months.map((m, i) => {
             const open = m.month === thisMonth;
             let acc = 0;
+            const kinds = STACK.filter((k) => m.byKind[k]);
+            const dim = hover !== null && hover !== i;
             return (
-              <g key={m.month}>
-                {STACK.map((k) => {
+              <g key={m.month} style={{ opacity: dim ? 0.5 : 1, transition: "opacity .15s" }}>
+                {kinds.map((k, ki) => {
                   const v = m.byKind[k];
-                  if (!v) return null;
                   const y0 = Y(acc), y1 = Y(acc + v);
                   acc += v;
+                  const gap = ki === 0 ? 0 : 2; // a 2px surface gap between stacked fills
+                  const h = Math.max(1, y0 - y1 - gap);
                   return (
-                    <rect
+                    <path
                       key={k}
-                      x={cx(i) - bw / 2}
-                      y={y1}
-                      width={bw}
-                      height={Math.max(0, y0 - y1 - 1.5)}
-                      rx={3}
-                      fill={KIND_COLOR[k]}
+                      d={segPath(cx(i) - bw / 2, y1, bw, h, Math.min(5, bw / 2, h), ki === kinds.length - 1)}
+                      fill={`url(#${gid}${k})`}
                       fillOpacity={open ? 0.4 : 1}
                       stroke={open ? KIND_COLOR[k] : undefined}
                       strokeWidth={open ? 1.5 : undefined}
@@ -213,7 +227,7 @@ function Bars({ months, thisMonth, tip }: { months: Month[]; thisMonth: string; 
                   );
                 })}
                 {m.count > 0 && bw >= 18 && (
-                  <text x={cx(i)} y={Y(m.count) - 7} textAnchor="middle" className="fill-foreground text-[13px] font-bold">
+                  <text x={cx(i)} y={Y(m.count) - 8} textAnchor="middle" className="fill-foreground text-[12px] font-bold">
                     {m.count}
                   </text>
                 )}
@@ -233,9 +247,9 @@ function Bars({ months, thisMonth, tip }: { months: Month[]; thisMonth: string; 
             );
           })}
 
-          <path d={duePath} fill="none" stroke="var(--foreground)" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" />
+          <path d={duePath} fill="none" stroke="var(--foreground)" strokeOpacity={0.75} strokeWidth={1.75} strokeDasharray="5 4" strokeLinejoin="round" strokeLinecap="round" />
           {months.map((m, i) => (
-            <circle key={m.month} cx={cx(i)} cy={Y(m.due)} r={hover === i ? 5.5 : 4} fill="var(--card)" stroke="var(--foreground)" strokeWidth={2} />
+            <circle key={m.month} cx={cx(i)} cy={Y(m.due)} r={hover === i ? 5.5 : 3.5} fill="var(--card)" stroke="var(--foreground)" strokeWidth={2} />
           ))}
 
           {/* one invisible column per month catches the pointer, so a thin bar is as easy to hit as a wide one */}
