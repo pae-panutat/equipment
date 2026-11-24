@@ -125,7 +125,7 @@ export function CalendarView() {
               </div>
             ))}
             {cells.map((date, n) => {
-              if (date === null) return <div key={`blank${n}`} className="min-h-[64px] bg-muted/40 sm:min-h-[104px]" aria-hidden="true" />;
+              if (date === null) return <div key={`blank${n}`} className="min-h-[64px] bg-neutral-100 sm:min-h-[104px] dark:bg-neutral-800/60" aria-hidden="true" />;
               const items = byDay.get(date) ?? [];
               const past = date < now;
               return (

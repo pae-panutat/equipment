@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
 import type { HistoryItem, Paged } from "@shared/index";
 import { Card, CardTitle, ErrorState, Skeleton } from "@/components/ui/card";
 import { useApi } from "@/lib/use-api";
@@ -36,20 +35,14 @@ function Body({ assetId }: { assetId: number }) {
   );
 }
 
-/** The asset's edit history, loaded only when opened. */
+/** The asset's edit history, always expanded so the details are visible. */
 export function AssetHistory({ assetId }: { assetId: number }) {
-  const [open, setOpen] = useState(false);
   return (
     <Card className="print:hidden">
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-9 w-full items-center justify-between gap-3 text-left">
-        <CardTitle>ประวัติการแก้ไข</CardTitle>
-        <ChevronDown className={`size-5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-      </button>
-      {open && (
-        <div className="mt-2">
-          <Body assetId={assetId} />
-        </div>
-      )}
+      <CardTitle>ประวัติการแก้ไข</CardTitle>
+      <div className="mt-2">
+        <Body assetId={assetId} />
+      </div>
     </Card>
   );
 }
