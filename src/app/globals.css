@@ -396,14 +396,14 @@ input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="
 body {
   background-color: var(--background);
   background-image:
-    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, var(--primary) 38%, transparent), transparent 70%),
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, var(--primary) 5%, transparent), transparent 70%),
     radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, var(--gold) 34%, transparent), transparent 70%);
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
 .dark body {
   background-image:
-    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, #5b45f7 64%, transparent), transparent 70%),
+    radial-gradient(900px 600px at 10% 0%, color-mix(in oklab, #5b45f7 10%, transparent), transparent 70%),
     radial-gradient(800px 600px at 100% 100%, color-mix(in oklab, #a28aff 42%, transparent), transparent 70%);
 }
 body::before {
