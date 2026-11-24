@@ -19,7 +19,7 @@ type NavItem = { href: string; label: string; short?: string; icon: React.Compon
 const MAIN: NavItem[] = [
   { href: "/", label: "ภาพรวม", icon: LayoutDashboard },
   { href: "/assets", label: "ทะเบียนอุปกรณ์", short: "อุปกรณ์", icon: Boxes },
-  { href: "/building", label: "อาคาร 3 มิติ", short: "3 มิติ", icon: Building2 },
+  { href: "/building", label: "3D", short: "3D", icon: Building2 },
   { href: "/calendar", label: "ปฏิทินบำรุงรักษา", short: "ปฏิทิน", icon: CalendarDays },
   { href: "/reports", label: "รายงาน", icon: FileBarChart },
 ];

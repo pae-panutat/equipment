@@ -84,10 +84,7 @@ export function BuildingView() {
 
   return (
     <div className="grid gap-5">
-      <div>
-        <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">อาคาร 3 มิติ</h1>
-        <p className="mt-1 text-muted-foreground">ลากเพื่อเลื่อนแผนผัง (คลิกขวาลากเพื่อหมุน, ล้อเมาส์เพื่อซูม) กดที่เครื่องเพื่อดูข้อมูลอุปกรณ์นั้น</p>
-      </div>
+      <h1 className="text-2xl font-bold tracking-[-0.02em] sm:text-3xl">แผนภาพ 3D</h1>
 
       <FilterBar allUnitsLabel="กรุณาเลือกส่วนงาน" value={filters} onChange={(v) => (setFilters(v), setPicked(null))} />
 
@@ -136,7 +133,6 @@ export function BuildingView() {
                     )}
                   >
                     ชั้น {f}
-                    <i className={cn("size-2 rounded-full", TONE[worst(placed.filter((p) => p.floor === f))], f === shown && "ring-2 ring-white/70")} aria-hidden="true" />
                   </button>
                 ))}
               </div>
